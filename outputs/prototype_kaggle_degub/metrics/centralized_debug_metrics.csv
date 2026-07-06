@@ -1,0 +1,4 @@
+run_type,epoch,train_loss,train_accuracy,val_loss,val_accuracy,val_precision,val_recall,val_f1,val_auc,checkpoint_path
+centralized_debug,1,0.6011919665336609,0.702,1.4926034536361694,0.708,0.0,0.0,0.0,0.6778887083043109,/kaggle/working/outputs/checkpoints/centralized_resnet18_debug_best.pt
+centralized_debug,2,0.45559779572486875,0.793,0.47820513010025023,0.744,0.5398230088495575,0.8356164383561644,0.6559139784946236,0.8613884374274436,/kaggle/working/outputs/checkpoints/centralized_resnet18_debug_best.pt
+centralized_debug,3,0.36933387792110445,0.847,1.3528006343841552,0.768,0.8571428571428571,0.2465753424657534,0.3829787234042553,0.8223821685628047,/kaggle/working/outputs/checkpoints/centralized_resnet18_debug_best.pt
