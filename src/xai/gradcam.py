@@ -45,9 +45,12 @@ class GradCAM:
         )
 
         logits = self.model(image_tensor)
+        probs = torch.softmax(logits, dim=1)
 
         if class_idx is None:
-            class_idx = int(torch.argmax(logits, dim=1).item())
+            class_idx = int(torch.argmax(probs, dim=1).item())
+
+        confidence = float(probs[:, class_idx].item())
 
         score = logits[:, class_idx].sum()
         score.backward()
@@ -68,7 +71,7 @@ class GradCAM:
         cam = cam - cam.min()
         cam = cam / (cam.max() + 1e-8)
 
-        return cam, class_idx
+        return cam, class_idx, confidence
 
 
 def save_gradcam_overlay(image_tensor, heatmap, save_path: Path, title=None):
@@ -129,7 +132,7 @@ def generate_gradcam_outputs(
     for idx in range(len(xai_dataset)):
         image_tensor, label, image_id = xai_dataset[idx]
 
-        heatmap, pred_class = gradcam.generate(image_tensor)
+        heatmap, pred_class, confidence = gradcam.generate(image_tensor)
 
         save_path = output_subdir / (
             f"{image_id}_label{label.item()}_pred{pred_class}.png"
@@ -151,15 +154,21 @@ def generate_gradcam_outputs(
         )
 
         row = {
-            "run_type": run_type,
+            "experiment_id": config["experiment_id"],
+            "dataset": config.get("dataset", "vindr"),
+            "task": config.get("task", "binary_abnormal"),
+            "training_type": run_type,
+            "split_type": config.get("split_type", "iid"),
+            "round": round_num,
+            "checkpoint_path": str(checkpoint_path),
             "image_id": image_id,
             "true_label": int(label.item()),
-            "pred_class_for_gradcam": int(pred_class),
+            "predicted_label": int(pred_class),
+            "confidence": confidence,
+            "xai_method": "gradcam",
             "heatmap_path": str(save_path),
+            "overlay_path": str(save_path),
         }
-
-        if round_num is not None:
-            row["round"] = round_num
 
         gradcam_rows.append(row)
 

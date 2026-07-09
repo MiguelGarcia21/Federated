@@ -104,6 +104,7 @@ def train_centralized_debug(
         )
 
         row = {
+            "experiment_id": config["experiment_id"],
             "run_type": "centralized_debug",
             "epoch": epoch,
             "train_loss": train_metrics["loss"],
@@ -114,6 +115,10 @@ def train_centralized_debug(
             "val_recall": val_metrics["recall"],
             "val_f1": val_metrics["f1"],
             "val_auc": val_metrics["auc"],
+            "seed": config["seed"],
+            "model_name": config.get("model_name", "resnet18"),
+            "dataset": config.get("dataset", "vindr"),
+            "task": config.get("task", "binary_abnormal"),
             "checkpoint_path": str(best_checkpoint_path),
         }
 
@@ -143,7 +148,10 @@ def train_centralized_debug(
 
     centralized_metrics_df = pd.DataFrame(centralized_rows)
 
-    centralized_metrics_path = metrics_dir / "centralized_debug_metrics.csv"
+    centralized_metrics_path = (
+        metrics_dir / f"{config['experiment_id']}_centralized_debug_metrics.csv"
+    )
+    
     centralized_metrics_df.to_csv(centralized_metrics_path, index=False)
 
     print("Saved centralized metrics to:", centralized_metrics_path)

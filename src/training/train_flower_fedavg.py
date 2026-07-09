@@ -347,7 +347,20 @@ def run_fedavg_debug(
 
     fl_metrics_df = history_to_dataframe(history)
 
-    fl_metrics_path = metrics_dir / "flower_fedavg_debug_metrics.csv"
+    fl_metrics_df.insert(0, "experiment_id", config["experiment_id"])
+    fl_metrics_df["run_type"] = "flower_fedavg_debug"
+    fl_metrics_df["num_clients"] = num_clients
+    fl_metrics_df["split_type"] = config.get("split_type", "iid")
+    fl_metrics_df["seed"] = config["seed"]
+    fl_metrics_df["model_name"] = config.get("model_name", "resnet18")
+    fl_metrics_df["dataset"] = config.get("dataset", "vindr")
+    fl_metrics_df["task"] = config.get("task", "binary_abnormal")
+    fl_metrics_df["fl_algorithm"] = config.get("fl_algorithm", "fedavg")
+    fl_metrics_df["local_epochs"] = local_epochs
+
+    fl_metrics_path = (
+        metrics_dir / f"{config['experiment_id']}_flower_fedavg_debug_metrics.csv"
+    )
     fl_metrics_df.to_csv(fl_metrics_path, index=False)
 
     print("Saved Flower metrics to:", fl_metrics_path)

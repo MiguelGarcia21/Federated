@@ -76,16 +76,50 @@ def print_output_check(dirs: Dict[str, Path]) -> None:
     for path in sorted(dirs["interim_dir"].glob("*.csv")):
         print("-", path)
 
-def zip_outputs(output_dir: Path, project_root: Path, zip_name: str = "prototype_outputs") -> Path:
-    """Optional equivalent of the notebook's final zip/export step."""
+def zip_experiment_outputs(
+    dirs: Dict[str, Path],
+    experiment_id: str,
+    zip_name: str | None = None,
+) -> Path:
+    """Zip only the current experiment outputs.
+
+    This avoids accidentally zipping every previous run under outputs/.
+    """
     import shutil
+    import tempfile
 
+    if zip_name is None:
+        zip_name = f"{experiment_id}_outputs"
+
+    project_root = dirs["project_root"]
     zip_base = project_root / zip_name
-    zip_path = shutil.make_archive(
-        base_name=str(zip_base),
-        format="zip",
-        root_dir=str(output_dir),
-    )
 
-    print("Created zip file:", zip_path)
+    with tempfile.TemporaryDirectory() as tmpdir:
+        tmpdir = Path(tmpdir)
+        staging_dir = tmpdir / experiment_id
+        staging_dir.mkdir(parents=True, exist_ok=True)
+
+        items_to_copy = {
+            "checkpoints": dirs["checkpoint_dir"],
+            "heatmaps": dirs["heatmap_dir"],
+            "metrics": dirs["metrics_dir"],
+            "interim": dirs["interim_dir"],
+        }
+
+        for name, source_path in items_to_copy.items():
+            if source_path.exists():
+                target_path = staging_dir / name
+
+                if source_path.is_dir():
+                    shutil.copytree(source_path, target_path)
+                else:
+                    shutil.copy2(source_path, target_path)
+
+        zip_path = shutil.make_archive(
+            base_name=str(zip_base),
+            format="zip",
+            root_dir=str(staging_dir),
+        )
+
+    print("Created experiment zip file:", zip_path)
     return Path(zip_path)
