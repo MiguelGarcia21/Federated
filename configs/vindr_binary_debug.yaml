@@ -1,0 +1,32 @@
+experiment_id: "debug_runpod_reproduce_kaggle"
+
+project_root: "/workspace/thesis-fl-xai"
+raw_data_dir: "/workspace/data/raw/vindr"
+output_dir: "/workspace/thesis-fl-xai/outputs"
+
+train_csv: "/workspace/data/raw/vindr/train.csv"
+train_image_dir: "/workspace/data/raw/vindr/train"
+
+task: "binary_abnormal"
+image_size: 224
+
+subset_train_size: 1000
+subset_val_size: 250
+xai_subset_size: 12
+
+model_name: "resnet18"
+num_classes: 2
+batch_size: 16
+num_workers: 2
+learning_rate: 0.0001
+epochs: 3
+seed: 42
+
+fl_algorithm: "fedavg"
+fl_num_clients: 3
+fl_num_rounds: 3
+fl_local_epochs: 1
+split_type: "iid"
+
+xai_method: "gradcam"
+save_checkpoints_every: 1
