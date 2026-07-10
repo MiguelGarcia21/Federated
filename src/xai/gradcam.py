@@ -176,12 +176,9 @@ def generate_gradcam_outputs(
 
     gradcam_df = pd.DataFrame(gradcam_rows)
 
-    if run_type == "centralized_debug":
-        output_path = metrics_dir / "centralized_gradcam_outputs.csv"
-    elif run_type == "flower_fedavg_debug":
-        output_path = metrics_dir / "flower_fedavg_gradcam_outputs.csv"
-    else:
-        output_path = metrics_dir / f"{run_type}_gradcam_outputs.csv"
+    output_path = (
+        metrics_dir / f"{config['experiment_id']}_{run_type}_gradcam_outputs.csv"
+    )
 
     gradcam_df.to_csv(output_path, index=False)
 
