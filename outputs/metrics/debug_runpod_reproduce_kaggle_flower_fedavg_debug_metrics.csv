@@ -1,0 +1,4 @@
+experiment_id,round,distributed_loss,accuracy,precision,recall,f1,auc,fit_train_loss,fit_train_accuracy,run_type,num_clients,split_type,seed,model_name,dataset,task,fl_algorithm,local_epochs
+debug_runpod_reproduce_kaggle,1,0.6635556653340657,0.732,0.6,0.24657534246575338,0.3495145631067961,0.6968500890023991,0.6497327573895454,0.653,flower_fedavg_debug,3,iid,42,resnet18,vindr,binary_abnormal,fedavg,1
+debug_runpod_reproduce_kaggle,2,0.5870032148361206,0.772,0.6025641025641025,0.6438356164383562,0.6225165562913906,0.7768748548873926,0.6182547736167908,0.683,flower_fedavg_debug,3,iid,42,resnet18,vindr,binary_abnormal,fedavg,1
+debug_runpod_reproduce_kaggle,3,0.5552390381495158,0.768,0.6153846153846154,0.5479452054794521,0.5797101449275363,0.8207569073601113,0.5396034774184227,0.736,flower_fedavg_debug,3,iid,42,resnet18,vindr,binary_abnormal,fedavg,1
