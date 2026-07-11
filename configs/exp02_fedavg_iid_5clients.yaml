@@ -1,0 +1,64 @@
+# Experiment 2:
+# Full VinDr binary FedAvg baseline with 5 IID clients.
+
+experiment_id: "exp02_fedavg_iid_5clients_seed42"
+run_type: "flower_fedavg"
+
+project_root: "/workspace/thesis-fl-xai"
+raw_data_dir: "/workspace/data/raw/vindr"
+output_dir: "/workspace/thesis-fl-xai/outputs"
+
+train_csv: "/workspace/data/raw/vindr/train.csv"
+train_image_dir: "/workspace/data/raw/vindr/train"
+
+dataset: "vindr"
+task: "binary_abnormal"
+
+# Reuse the same full-dataset split protocol as Experiment 1
+use_full_dataset: true
+reuse_split_files: true
+
+canonical_train_split_path: "/workspace/thesis-fl-xai/data/interim/exp01_centralized_vindr_binary_seed42_train_split.csv"
+canonical_val_split_path: "/workspace/thesis-fl-xai/data/interim/exp01_centralized_vindr_binary_seed42_val_split.csv"
+canonical_xai_ids_path: "/workspace/thesis-fl-xai/data/interim/exp01_centralized_vindr_binary_seed42_xai_image_ids.csv"
+
+val_fraction: 0.20
+
+# Fixed XAI validation subset
+xai_subset_size: 200
+
+# Model
+model_name: "resnet18"
+num_classes: 2
+pretrained: false
+image_size: 224
+
+# Local training
+batch_size: 16
+learning_rate: 0.0001
+weight_decay: 0.01
+horizontal_flip: true
+rotation_degrees: 0.0
+
+# Federated learning
+fl_algorithm: "fedavg"
+fl_num_clients: 5
+fl_num_rounds: 50
+fl_local_epochs: 1
+split_type: "iid"
+
+# Flower client execution
+fl_client_device: "cuda"
+fl_client_num_cpus: 2
+fl_client_num_gpus: 1.0
+fl_num_workers: 2
+
+# Save selected rounds for later XAI analysis
+save_checkpoints_every: 5
+save_initial_checkpoint: true
+
+# Reproducibility
+seed: 42
+
+# Output behavior
+create_output_zip: false

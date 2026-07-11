@@ -1,17 +1,16 @@
+import time
 from collections import OrderedDict
 from pathlib import Path
-from typing import Dict, Any, List, Tuple
+from typing import Any, Dict, List, Tuple
 
+import flwr as fl
 import numpy as np
 import pandas as pd
-
 import torch
 import torch.nn as nn
 import torch.optim as optim
-from torch.utils.data import DataLoader
-
-import flwr as fl
 from flwr.common import parameters_to_ndarrays
+from torch.utils.data import DataLoader
 
 from src.data.datasets import (
     VinDrBinaryDataset,
@@ -19,59 +18,150 @@ from src.data.datasets import (
     get_val_transform,
 )
 from src.models.cnn import create_model
-from src.training.evaluate import train_one_epoch, evaluate_model
+from src.training.evaluate import evaluate_model, train_one_epoch
 
 
-def get_model_parameters(model: nn.Module):
+def get_model_parameters(model: nn.Module) -> List[np.ndarray]:
+    """Convert the model state dictionary to Flower-compatible arrays."""
     return [
-        value.cpu().numpy()
-        for _, value in model.state_dict().items()
+        value.detach().cpu().numpy()
+        for value in model.state_dict().values()
     ]
 
 
-def set_model_parameters(model: nn.Module, parameters):
-    params_dict = zip(model.state_dict().keys(), parameters)
+def set_model_parameters(
+    model: nn.Module,
+    parameters: List[np.ndarray],
+) -> None:
+    """Load Flower parameters into a PyTorch model."""
+    model_keys = list(model.state_dict().keys())
 
-    state_dict = OrderedDict({
-        key: torch.tensor(value)
-        for key, value in params_dict
-    })
+    if len(model_keys) != len(parameters):
+        raise ValueError(
+            "Parameter count mismatch between the model and "
+            "the received Flower parameters."
+        )
+
+    state_dict = OrderedDict(
+        (
+            key,
+            torch.as_tensor(value),
+        )
+        for key, value in zip(model_keys, parameters)
+    )
 
     model.load_state_dict(state_dict, strict=True)
 
 
-def weighted_average(metrics):
-    total_examples = sum(num_examples for num_examples, _ in metrics)
+def weighted_average(
+    metrics: List[Tuple[int, Dict[str, float]]],
+) -> Dict[str, float]:
+    """Aggregate numeric client metrics weighted by sample count."""
+    if not metrics:
+        return {}
+
+    total_examples = sum(
+        num_examples
+        for num_examples, _ in metrics
+    )
+
+    if total_examples <= 0:
+        raise ValueError(
+            "Cannot aggregate Flower metrics with zero examples."
+        )
+
+    common_keys = set(metrics[0][1].keys())
+
+    for _, metric_dict in metrics[1:]:
+        common_keys.intersection_update(metric_dict.keys())
 
     aggregated = {}
 
-    for key in metrics[0][1].keys():
-        aggregated[key] = sum(
-            num_examples * metric_dict[key]
-            for num_examples, metric_dict in metrics
-        ) / total_examples
+    for key in sorted(common_keys):
+        aggregated[key] = float(
+            sum(
+                num_examples * float(metric_dict[key])
+                for num_examples, metric_dict in metrics
+            )
+            / total_examples
+        )
 
     return aggregated
 
 
-def make_loader_from_df(config: Dict[str, Any], df: pd.DataFrame, shuffle: bool):
+def make_loader_from_df(
+    config: Dict[str, Any],
+    df: pd.DataFrame,
+    shuffle: bool,
+) -> DataLoader:
+    """Create a local Flower client DataLoader."""
     image_size = int(config["image_size"])
-    transform = get_train_transform(image_size) if shuffle else get_val_transform(image_size)
+
+    if shuffle:
+        transform = get_train_transform(
+            image_size=image_size,
+            horizontal_flip=bool(
+                config.get("horizontal_flip", True)
+            ),
+            rotation_degrees=float(
+                config.get("rotation_degrees", 0.0)
+            ),
+        )
+    else:
+        transform = get_val_transform(image_size)
 
     dataset = VinDrBinaryDataset(
         df=df,
         transform=transform,
     )
 
-    loader = DataLoader(
+    num_workers = int(
+        config.get("fl_num_workers", 0)
+    )
+
+    client_device = str(
+        config.get("fl_client_device", "cpu")
+    ).lower()
+
+    pin_memory = (
+        client_device == "cuda"
+        and torch.cuda.is_available()
+    )
+
+    return DataLoader(
         dataset,
         batch_size=int(config["batch_size"]),
         shuffle=shuffle,
-        num_workers=0,
-        pin_memory=False,
+        num_workers=num_workers,
+        pin_memory=pin_memory,
+        persistent_workers=num_workers > 0,
+        drop_last=False,
     )
 
-    return loader
+
+def resolve_client_device(
+    config: Dict[str, Any],
+) -> torch.device:
+    """Resolve the configured Flower client device safely."""
+    requested_device = str(
+        config.get("fl_client_device", "cpu")
+    ).lower()
+
+    if requested_device == "cuda":
+        if not torch.cuda.is_available():
+            raise RuntimeError(
+                "fl_client_device='cuda' was requested, "
+                "but CUDA is not available."
+            )
+
+        return torch.device("cuda")
+
+    if requested_device == "cpu":
+        return torch.device("cpu")
+
+    raise ValueError(
+        "fl_client_device must be either 'cpu' or 'cuda'."
+    )
 
 
 class VinDrFlowerClient(fl.client.NumPyClient):
@@ -84,12 +174,15 @@ class VinDrFlowerClient(fl.client.NumPyClient):
     ):
         self.client_id = client_id
         self.config = config
+        self.device = resolve_client_device(config)
 
         self.model = create_model(
             model_name=config.get("model_name", "resnet18"),
             num_classes=int(config["num_classes"]),
+            pretrained=bool(
+                config.get("pretrained", False)
+            ),
         )
-        self.device = torch.device("cpu")
 
         self.train_loader = make_loader_from_df(
             config=config,
@@ -110,28 +203,47 @@ class VinDrFlowerClient(fl.client.NumPyClient):
             .reindex([0, 1], fill_value=1)
         )
 
-        local_class_weights = len(client_train_df) / (2.0 * local_class_counts)
+        local_class_weights = (
+            len(client_train_df)
+            / (2.0 * local_class_counts)
+        )
 
         self.class_weights = torch.tensor(
             local_class_weights.values,
             dtype=torch.float32,
-        ).to(self.device)
+            device=self.device,
+        )
 
     def get_parameters(self, config):
         return get_model_parameters(self.model)
 
     def fit(self, parameters, config):
-        set_model_parameters(self.model, parameters)
+        set_model_parameters(
+            self.model,
+            parameters,
+        )
 
         self.model.to(self.device)
 
-        criterion = nn.CrossEntropyLoss(weight=self.class_weights)
+        criterion = nn.CrossEntropyLoss(
+            weight=self.class_weights
+        )
 
-        learning_rate = float(self.config.get("learning_rate", self.config.get("fl_lr", 1e-4)))
+        learning_rate = float(
+            self.config.get(
+                "learning_rate",
+                self.config.get("fl_lr", 1e-4),
+            )
+        )
+
+        weight_decay = float(
+            self.config.get("weight_decay", 0.01)
+        )
 
         optimizer = optim.AdamW(
             self.model.parameters(),
             lr=learning_rate,
+            weight_decay=weight_decay,
         )
 
         local_epochs = int(
@@ -141,6 +253,7 @@ class VinDrFlowerClient(fl.client.NumPyClient):
             )
         )
 
+        fit_start_time = time.perf_counter()
         final_train_metrics = None
 
         for _ in range(local_epochs):
@@ -152,21 +265,44 @@ class VinDrFlowerClient(fl.client.NumPyClient):
                 device=self.device,
             )
 
+        fit_runtime_seconds = (
+            time.perf_counter() - fit_start_time
+        )
+
+        if final_train_metrics is None:
+            raise RuntimeError(
+                f"Client {self.client_id} completed no local epochs."
+            )
+
         return (
             get_model_parameters(self.model),
             len(self.train_loader.dataset),
             {
-                "train_loss": float(final_train_metrics["loss"]),
-                "train_accuracy": float(final_train_metrics["accuracy"]),
+                "train_loss": float(
+                    final_train_metrics["loss"]
+                ),
+                "train_accuracy": float(
+                    final_train_metrics["accuracy"]
+                ),
+                "fit_runtime_seconds": float(
+                    fit_runtime_seconds
+                ),
             },
         )
 
     def evaluate(self, parameters, config):
-        set_model_parameters(self.model, parameters)
+        set_model_parameters(
+            self.model,
+            parameters,
+        )
 
         self.model.to(self.device)
 
-        criterion = nn.CrossEntropyLoss(weight=self.class_weights)
+        criterion = nn.CrossEntropyLoss(
+            weight=self.class_weights
+        )
+
+        evaluation_start_time = time.perf_counter()
 
         metrics = evaluate_model(
             model=self.model,
@@ -175,104 +311,219 @@ class VinDrFlowerClient(fl.client.NumPyClient):
             device=self.device,
         )
 
-        auc_value = metrics["auc"]
-        if np.isnan(auc_value):
-            auc_value = 0.0
+        evaluation_runtime_seconds = (
+            time.perf_counter() - evaluation_start_time
+        )
+
+        float_metrics = {
+            "accuracy": metrics["accuracy"],
+            "precision": metrics["precision"],
+            "recall": metrics["recall"],
+            "specificity": metrics["specificity"],
+            "f1": metrics["f1"],
+            "auc": metrics["auc"],
+            "average_precision": metrics[
+                "average_precision"
+            ],
+            "balanced_accuracy": metrics[
+                "balanced_accuracy"
+            ],
+            "negative_predictive_value": metrics[
+                "negative_predictive_value"
+            ],
+            "false_positive_rate": metrics[
+                "false_positive_rate"
+            ],
+            "false_negative_rate": metrics[
+                "false_negative_rate"
+            ],
+            "mcc": metrics["mcc"],
+            "brier_score": metrics["brier_score"],
+            "mean_positive_probability": metrics[
+                "mean_positive_probability"
+            ],
+            "mean_prediction_confidence": metrics[
+                "mean_prediction_confidence"
+            ],
+            "positive_prediction_rate": metrics[
+                "positive_prediction_rate"
+            ],
+            "evaluation_runtime_seconds": (
+                evaluation_runtime_seconds
+            ),
+        }
+
+        for key, value in float_metrics.items():
+            if np.isnan(value):
+                float_metrics[key] = 0.0
+            else:
+                float_metrics[key] = float(value)
 
         return (
             float(metrics["loss"]),
             len(self.val_loader.dataset),
-            {
-                "accuracy": float(metrics["accuracy"]),
-                "precision": float(metrics["precision"]),
-                "recall": float(metrics["recall"]),
-                "f1": float(metrics["f1"]),
-                "auc": float(auc_value),
-            },
+            float_metrics,
         )
 
 
 class SaveModelFedAvg(fl.server.strategy.FedAvg):
-    def __init__(self, global_model, checkpoint_dir, config, *args, **kwargs):
+    """FedAvg strategy that saves selected global checkpoints."""
+
+    def __init__(
+        self,
+        global_model: nn.Module,
+        checkpoint_dir: Path,
+        config: Dict[str, Any],
+        *args,
+        **kwargs,
+    ):
         super().__init__(*args, **kwargs)
 
         self.global_model = global_model
         self.checkpoint_dir = Path(checkpoint_dir)
         self.config = config
-        self.checkpoint_dir.mkdir(parents=True, exist_ok=True)
-
-    def aggregate_fit(self, server_round, results, failures):
-        aggregated_parameters, aggregated_metrics = super().aggregate_fit(
-            server_round,
-            results,
-            failures,
+        self.checkpoint_dir.mkdir(
+            parents=True,
+            exist_ok=True,
         )
 
-        if aggregated_parameters is not None:
-            ndarrays = parameters_to_ndarrays(aggregated_parameters)
+        self.save_every = int(
+            config.get("save_checkpoints_every", 1)
+        )
 
-            set_model_parameters(self.global_model, ndarrays)
+        self.total_rounds = int(
+            config.get(
+                "fl_num_rounds",
+                config.get("fl_rounds", 3),
+            )
+        )
+
+        if self.save_every <= 0:
+            raise ValueError(
+                "save_checkpoints_every must be greater than zero."
+            )
+
+    def aggregate_fit(
+        self,
+        server_round,
+        results,
+        failures,
+    ):
+        aggregated_parameters, aggregated_metrics = (
+            super().aggregate_fit(
+                server_round,
+                results,
+                failures,
+            )
+        )
+
+        if aggregated_parameters is None:
+            return aggregated_parameters, aggregated_metrics
+
+        should_save = (
+            server_round % self.save_every == 0
+            or server_round == self.total_rounds
+        )
+
+        if should_save:
+            ndarrays = parameters_to_ndarrays(
+                aggregated_parameters
+            )
+
+            set_model_parameters(
+                self.global_model,
+                ndarrays,
+            )
 
             checkpoint_path = (
-                self.checkpoint_dir /
-                f"flower_fedavg_round_{server_round}.pt"
+                self.checkpoint_dir
+                / f"flower_fedavg_round_{server_round}.pt"
             )
 
             torch.save(
                 {
-                    "model_state_dict": self.global_model.state_dict(),
+                    "model_state_dict": (
+                        self.global_model.state_dict()
+                    ),
                     "config": self.config,
                     "round": server_round,
-                    "aggregated_metrics": aggregated_metrics,
+                    "aggregated_fit_metrics": (
+                        aggregated_metrics
+                    ),
                 },
                 checkpoint_path,
             )
 
-            print(f"Saved FL checkpoint: {checkpoint_path}")
+            print(
+                f"Saved FL checkpoint: {checkpoint_path}"
+            )
 
         return aggregated_parameters, aggregated_metrics
 
 
 def history_to_dataframe(history) -> pd.DataFrame:
+    """Convert Flower history into one row per round."""
     fl_metrics_df = pd.DataFrame()
 
-    if len(history.losses_distributed) > 0:
+    if history.losses_distributed:
         fl_metrics_df = pd.DataFrame(
             history.losses_distributed,
-            columns=["round", "distributed_loss"],
+            columns=[
+                "round",
+                "distributed_loss",
+            ],
         )
 
     if hasattr(history, "metrics_distributed"):
-        for metric_name, values in history.metrics_distributed.items():
+        for metric_name, values in (
+            history.metrics_distributed.items()
+        ):
             metric_df = pd.DataFrame(
                 values,
-                columns=["round", metric_name],
+                columns=[
+                    "round",
+                    metric_name,
+                ],
             )
 
-            if fl_metrics_df.empty:
-                fl_metrics_df = metric_df
-            else:
-                fl_metrics_df = fl_metrics_df.merge(
+            fl_metrics_df = (
+                metric_df
+                if fl_metrics_df.empty
+                else fl_metrics_df.merge(
                     metric_df,
                     on="round",
                     how="outer",
                 )
+            )
 
     if hasattr(history, "metrics_distributed_fit"):
-        for metric_name, values in history.metrics_distributed_fit.items():
+        for metric_name, values in (
+            history.metrics_distributed_fit.items()
+        ):
             metric_df = pd.DataFrame(
                 values,
-                columns=["round", f"fit_{metric_name}"],
+                columns=[
+                    "round",
+                    f"fit_{metric_name}",
+                ],
             )
 
-            if fl_metrics_df.empty:
-                fl_metrics_df = metric_df
-            else:
-                fl_metrics_df = fl_metrics_df.merge(
+            fl_metrics_df = (
+                metric_df
+                if fl_metrics_df.empty
+                else fl_metrics_df.merge(
                     metric_df,
                     on="round",
                     how="outer",
                 )
+            )
+
+    if not fl_metrics_df.empty:
+        fl_metrics_df = (
+            fl_metrics_df
+            .sort_values("round")
+            .reset_index(drop=True)
+        )
 
     return fl_metrics_df
 
@@ -284,17 +535,76 @@ def run_fedavg_debug(
     checkpoint_dir: Path,
     metrics_dir: Path,
 ) -> Tuple[object, Path]:
-    num_clients = int(config.get("fl_num_clients", config.get("num_clients", 3)))
-    fl_rounds = int(config.get("fl_num_rounds", config.get("fl_rounds", 3)))
-    local_epochs = int(config.get("fl_local_epochs", 1))
+    """Run the reusable Phase 5/Phase 6 FedAvg simulation.
 
-    initial_global_model = create_model(
-        model_name=config.get("model_name", "resnet18"),
-        num_classes=int(config["num_classes"]),
+    The function name remains unchanged for Phase 5 compatibility.
+    """
+    num_clients = int(
+        config.get(
+            "fl_num_clients",
+            config.get("num_clients", 3),
+        )
     )
 
-    initial_parameters = fl.common.ndarrays_to_parameters(
-        get_model_parameters(initial_global_model)
+    fl_rounds = int(
+        config.get(
+            "fl_num_rounds",
+            config.get("fl_rounds", 3),
+        )
+    )
+
+    local_epochs = int(
+        config.get("fl_local_epochs", 1)
+    )
+
+    if len(client_dfs) != num_clients:
+        raise ValueError(
+            f"Expected {num_clients} client DataFrames, "
+            f"received {len(client_dfs)}."
+        )
+
+    initial_global_model = create_model(
+        model_name=config.get(
+            "model_name",
+            "resnet18",
+        ),
+        num_classes=int(config["num_classes"]),
+        pretrained=bool(
+            config.get("pretrained", False)
+        ),
+    )
+
+    save_initial_checkpoint = bool(
+        config.get("save_initial_checkpoint", False)
+    )
+
+    if save_initial_checkpoint:
+        initial_checkpoint_path = (
+            Path(checkpoint_dir)
+            / "flower_fedavg_round_0.pt"
+        )
+
+        torch.save(
+            {
+                "model_state_dict": initial_global_model.state_dict(),
+                "config": config,
+                "round": 0,
+                "aggregated_fit_metrics": {},
+            },
+            initial_checkpoint_path,
+        )
+
+        print(
+            "Saved initial FL checkpoint:",
+            initial_checkpoint_path,
+        )
+
+    initial_parameters = (
+        fl.common.ndarrays_to_parameters(
+            get_model_parameters(
+                initial_global_model
+            )
+        )
     )
 
     def fit_config(server_round: int):
@@ -317,20 +627,33 @@ def run_fedavg_debug(
         global_model=initial_global_model,
         checkpoint_dir=checkpoint_dir,
         config=config,
-
         fraction_fit=1.0,
         fraction_evaluate=1.0,
-
         min_fit_clients=num_clients,
         min_evaluate_clients=num_clients,
         min_available_clients=num_clients,
-
         initial_parameters=initial_parameters,
-
         on_fit_config_fn=fit_config,
         fit_metrics_aggregation_fn=weighted_average,
         evaluate_metrics_aggregation_fn=weighted_average,
     )
+
+    client_resources = {
+        "num_cpus": float(
+            config.get(
+                "fl_client_num_cpus",
+                1,
+            )
+        ),
+        "num_gpus": float(
+            config.get(
+                "fl_client_num_gpus",
+                0.0,
+            )
+        ),
+    }
+
+    simulation_start_time = time.perf_counter()
 
     history = fl.simulation.start_simulation(
         client_fn=client_fn,
@@ -339,31 +662,96 @@ def run_fedavg_debug(
             num_rounds=fl_rounds
         ),
         strategy=strategy,
-        client_resources={
-            "num_cpus": 1,
-            "num_gpus": 0.0,
-        },
+        client_resources=client_resources,
+    )
+
+    total_runtime_seconds = (
+        time.perf_counter() - simulation_start_time
     )
 
     fl_metrics_df = history_to_dataframe(history)
 
-    fl_metrics_df.insert(0, "experiment_id", config["experiment_id"])
-    fl_metrics_df["run_type"] = "flower_fedavg_debug"
+    if fl_metrics_df.empty:
+        raise RuntimeError(
+            "Flower completed without producing metric history."
+        )
+
+    experiment_id = config["experiment_id"]
+    run_type = str(
+        config.get(
+            "run_type",
+            "flower_fedavg_debug",
+        )
+    )
+
+    fl_metrics_df.insert(
+        0,
+        "experiment_id",
+        experiment_id,
+    )
+
+    fl_metrics_df["run_type"] = run_type
     fl_metrics_df["num_clients"] = num_clients
-    fl_metrics_df["split_type"] = config.get("split_type", "iid")
+    fl_metrics_df["split_type"] = config.get(
+        "split_type",
+        "iid",
+    )
     fl_metrics_df["seed"] = config["seed"]
-    fl_metrics_df["model_name"] = config.get("model_name", "resnet18")
-    fl_metrics_df["dataset"] = config.get("dataset", "vindr")
-    fl_metrics_df["task"] = config.get("task", "binary_abnormal")
-    fl_metrics_df["fl_algorithm"] = config.get("fl_algorithm", "fedavg")
+    fl_metrics_df["model_name"] = config.get(
+        "model_name",
+        "resnet18",
+    )
+    fl_metrics_df["dataset"] = config.get(
+        "dataset",
+        "vindr",
+    )
+    fl_metrics_df["task"] = config.get(
+        "task",
+        "binary_abnormal",
+    )
+    fl_metrics_df["fl_algorithm"] = config.get(
+        "fl_algorithm",
+        "fedavg",
+    )
     fl_metrics_df["local_epochs"] = local_epochs
+    fl_metrics_df["fl_rounds"] = fl_rounds
+    fl_metrics_df["batch_size"] = int(
+        config["batch_size"]
+    )
+    fl_metrics_df["learning_rate"] = float(
+        config.get(
+            "learning_rate",
+            config.get("fl_lr", 1e-4),
+        )
+    )
+    fl_metrics_df["total_runtime_seconds"] = (
+        total_runtime_seconds
+    )
+    fl_metrics_df["average_runtime_per_round_seconds"] = (
+        total_runtime_seconds / fl_rounds
+    )
+
+    metrics_filename = (
+        f"{experiment_id}_flower_fedavg_metrics.csv"
+    )
 
     fl_metrics_path = (
-        metrics_dir / f"{config['experiment_id']}_flower_fedavg_debug_metrics.csv"
+        metrics_dir / metrics_filename
     )
-    fl_metrics_df.to_csv(fl_metrics_path, index=False)
 
-    print("Saved Flower metrics to:", fl_metrics_path)
+    fl_metrics_df.to_csv(
+        fl_metrics_path,
+        index=False,
+    )
+
+    print(
+        "Saved Flower metrics to:",
+        fl_metrics_path,
+    )
+    print(
+        "Total Flower runtime:",
+        f"{total_runtime_seconds:.2f} seconds",
+    )
     print(fl_metrics_df)
 
     return history, fl_metrics_path
