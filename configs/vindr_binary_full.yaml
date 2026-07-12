@@ -30,8 +30,8 @@ pretrained: false
 image_size: 224
 
 # Training
-batch_size: 16
-num_workers: 2
+batch_size: 32
+num_workers: 8
 learning_rate: 0.0001
 epochs: 10
 weight_decay: 0.01
