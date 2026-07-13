@@ -1,0 +1,160 @@
+Experiment 1 config validation passed.
+Saved config snapshot: /workspace/thesis-fl-xai/outputs/checkpoints/exp01_centralized_vindr_binary_seed42/config.yaml
+Device: cuda
+CUDA available: True
+GPU name: NVIDIA RTX A5000
+GPU capability: (8, 6)
+CUDA test tensor: tensor([1., 2., 3.], device='cuda:0')
+
+Experiment 1: Prepare full VinDr data:
+Raw annotation table shape: (67914, 8)
+Class distribution by annotation rows:
+class_id
+0      7162
+1       279
+2       960
+3      5427
+4       556
+5      1000
+6      1247
+7      2483
+8      2580
+9      2203
+10     2476
+11     4842
+12      226
+13     4655
+14    31818
+Name: count, dtype: int64
+Unique image IDs: 15000
+Total annotation rows: 67914
+Missing DICOM files: 0
+Image-level table shape: (15000, 3)
+Binary label counts:
+binary_label
+0    10606
+1     4394
+Name: count, dtype: int64
+Binary label proportions:
+binary_label
+0    0.707067
+1    0.292933
+Name: proportion, dtype: float64
+Split integrity check passed.
+Train images: 12000
+Validation images: 3000
+Image overlap: 0
+Full train shape: (12000, 3)
+Full validation shape: (3000, 3)
+
+Full train label distribution:
+binary_label
+0    8485
+1    3515
+Name: count, dtype: int64
+
+Full validation label distribution:
+binary_label
+0    2121
+1     879
+Name: count, dtype: int64
+
+Full train label proportions:
+binary_label
+0    0.707083
+1    0.292917
+Name: proportion, dtype: float64
+
+Full validation label proportions:
+binary_label
+0    0.707
+1    0.293
+Name: proportion, dtype: float64
+Fixed XAI subset size: 200
+Fixed XAI label distribution:
+binary_label
+0    141
+1     59
+Name: count, dtype: int64
+Saved image-level labels to: /workspace/thesis-fl-xai/data/interim/vindr_binary_image_level.csv
+Saved train split: /workspace/thesis-fl-xai/data/interim/exp01_centralized_vindr_binary_seed42_train_split.csv
+Saved validation split: /workspace/thesis-fl-xai/data/interim/exp01_centralized_vindr_binary_seed42_val_split.csv
+Saved fixed XAI image IDs to: /workspace/thesis-fl-xai/data/interim/exp01_centralized_vindr_binary_seed42_xai_image_ids.csv
+Training samples: 12000
+Validation samples: 3000
+Fixed XAI image IDs: 200
+
+Experiment 1: Centralized training:
+Batch image tensor: torch.Size([32, 3, 224, 224])
+Batch image dtype: torch.float32
+Batch labels: tensor([1, 0, 0, 0, 0, 0, 0, 1, 0, 1])
+Example image IDs: ('ef725f99c37d1a779747e5f592a620fb', 'f90d70aeadcff7186649097a25a2d1a9', '59f84b0cc36d5e9626e36d142cfdf971')
+ResNet
+Trainable parameters: 11177538
+Class counts:
+binary_label
+0    8485
+1    3515
+Name: count, dtype: int64
+Class weights: tensor([0.7071, 1.7070], device='cuda:0')
+Epoch 1/10 | train_loss=0.4092 | train_acc=0.8183 | val_loss=0.5440 | val_acc=0.8347 | val_bal_acc=0.7445 | val_f1=0.6512 | val_auc=0.9097 | val_ap=0.8205 | pred_pos_rate=0.1810 | runtime=1424.78s | best=True
+Epoch 2/10 | train_loss=0.2932 | train_acc=0.8765 | val_loss=0.2519 | val_acc=0.9133 | val_bal_acc=0.9024 | val_f1=0.8556 | val_auc=0.9641 | val_ap=0.9302 | pred_pos_rate=0.3070 | runtime=1374.23s | best=True
+Epoch 3/10 | train_loss=0.2522 | train_acc=0.8962 | val_loss=0.2744 | val_acc=0.9143 | val_bal_acc=0.8941 | val_f1=0.8526 | val_auc=0.9626 | val_ap=0.9264 | pred_pos_rate=0.2880 | runtime=1368.28s | best=False
+Epoch 4/10 | train_loss=0.2286 | train_acc=0.9086 | val_loss=0.2330 | val_acc=0.8877 | val_bal_acc=0.9039 | val_f1=0.8311 | val_auc=0.9692 | val_ap=0.9397 | pred_pos_rate=0.3720 | runtime=1371.02s | best=False
+Epoch 5/10 | train_loss=0.2056 | train_acc=0.9186 | val_loss=1.2657 | val_acc=0.7813 | val_bal_acc=0.6292 | val_f1=0.4122 | val_auc=0.9315 | val_ap=0.8540 | pred_pos_rate=0.0790 | runtime=1388.27s | best=False
+Epoch 6/10 | train_loss=0.1873 | train_acc=0.9266 | val_loss=0.2534 | val_acc=0.9040 | val_bal_acc=0.9005 | val_f1=0.8448 | val_auc=0.9628 | val_ap=0.9219 | pred_pos_rate=0.3257 | runtime=1368.38s | best=False
+Epoch 7/10 | train_loss=0.1715 | train_acc=0.9337 | val_loss=0.2385 | val_acc=0.9117 | val_bal_acc=0.8999 | val_f1=0.8525 | val_auc=0.9689 | val_ap=0.9398 | pred_pos_rate=0.3060 | runtime=1346.82s | best=False
+Epoch 8/10 | train_loss=0.1498 | train_acc=0.9367 | val_loss=0.2683 | val_acc=0.9103 | val_bal_acc=0.8999 | val_f1=0.8511 | val_auc=0.9652 | val_ap=0.9278 | pred_pos_rate=0.3093 | runtime=1370.91s | best=False
+Epoch 9/10 | train_loss=0.1334 | train_acc=0.9499 | val_loss=0.3067 | val_acc=0.8893 | val_bal_acc=0.9004 | val_f1=0.8308 | val_auc=0.9614 | val_ap=0.9263 | pred_pos_rate=0.3610 | runtime=1363.18s | best=False
+Epoch 10/10 | train_loss=0.1123 | train_acc=0.9592 | val_loss=0.5558 | val_acc=0.8623 | val_bal_acc=0.7974 | val_f1=0.7316 | val_auc=0.9418 | val_ap=0.8755 | pred_pos_rate=0.2200 | runtime=1388.03s | best=False
+Saved centralized metrics to: /workspace/thesis-fl-xai/outputs/metrics/exp01_centralized_vindr_binary_seed42_centralized_metrics.csv
+Saved best centralized checkpoint to: /workspace/thesis-fl-xai/outputs/checkpoints/exp01_centralized_vindr_binary_seed42/centralized_resnet18_best.pt
+Saved best-epoch predictions to: /workspace/thesis-fl-xai/outputs/metrics/exp01_centralized_vindr_binary_seed42_centralized_best_predictions.csv
+Best epoch: 2
+Best validation F1: 0.8555555555555555
+Total centralized runtime: 13764.61 seconds
+                           experiment_id  ...                              best_predictions_path
+0  exp01_centralized_vindr_binary_seed42  ...  /workspace/thesis-fl-xai/outputs/metrics/exp01...
+1  exp01_centralized_vindr_binary_seed42  ...  /workspace/thesis-fl-xai/outputs/metrics/exp01...
+2  exp01_centralized_vindr_binary_seed42  ...  /workspace/thesis-fl-xai/outputs/metrics/exp01...
+3  exp01_centralized_vindr_binary_seed42  ...  /workspace/thesis-fl-xai/outputs/metrics/exp01...
+4  exp01_centralized_vindr_binary_seed42  ...  /workspace/thesis-fl-xai/outputs/metrics/exp01...
+5  exp01_centralized_vindr_binary_seed42  ...  /workspace/thesis-fl-xai/outputs/metrics/exp01...
+6  exp01_centralized_vindr_binary_seed42  ...  /workspace/thesis-fl-xai/outputs/metrics/exp01...
+7  exp01_centralized_vindr_binary_seed42  ...  /workspace/thesis-fl-xai/outputs/metrics/exp01...
+8  exp01_centralized_vindr_binary_seed42  ...  /workspace/thesis-fl-xai/outputs/metrics/exp01...
+9  exp01_centralized_vindr_binary_seed42  ...  /workspace/thesis-fl-xai/outputs/metrics/exp01...
+
+[10 rows x 52 columns]
+
+Experiment 1 completed:
+Best checkpoint: /workspace/thesis-fl-xai/outputs/checkpoints/exp01_centralized_vindr_binary_seed42/centralized_resnet18_best.pt
+Metrics CSV: /workspace/thesis-fl-xai/outputs/metrics/exp01_centralized_vindr_binary_seed42_centralized_metrics.csv
+
+Final output check
+Project root: /workspace/thesis-fl-xai
+
+Metrics files:
+- /workspace/thesis-fl-xai/outputs/metrics/debug_runpod_reproduce_kaggle_centralized_debug_gradcam_outputs.csv
+- /workspace/thesis-fl-xai/outputs/metrics/debug_runpod_reproduce_kaggle_centralized_debug_metrics.csv
+- /workspace/thesis-fl-xai/outputs/metrics/debug_runpod_reproduce_kaggle_flower_fedavg_debug_gradcam_outputs.csv
+- /workspace/thesis-fl-xai/outputs/metrics/debug_runpod_reproduce_kaggle_flower_fedavg_debug_metrics.csv
+- /workspace/thesis-fl-xai/outputs/metrics/exp01_centralized_vindr_binary_seed42_centralized_best_predictions.csv
+- /workspace/thesis-fl-xai/outputs/metrics/exp01_centralized_vindr_binary_seed42_centralized_metrics.csv
+
+Checkpoint files:
+- /workspace/thesis-fl-xai/outputs/checkpoints/exp01_centralized_vindr_binary_seed42/centralized_resnet18_best.pt
+
+Heatmap folders:
+
+Interim files:
+- /workspace/thesis-fl-xai/data/interim/debug_client_0_split.csv
+- /workspace/thesis-fl-xai/data/interim/debug_client_1_split.csv
+- /workspace/thesis-fl-xai/data/interim/debug_client_2_split.csv
+- /workspace/thesis-fl-xai/data/interim/debug_train_split.csv
+- /workspace/thesis-fl-xai/data/interim/debug_val_split.csv
+- /workspace/thesis-fl-xai/data/interim/exp01_centralized_vindr_binary_seed42_train_split.csv
+- /workspace/thesis-fl-xai/data/interim/exp01_centralized_vindr_binary_seed42_val_split.csv
+- /workspace/thesis-fl-xai/data/interim/exp01_centralized_vindr_binary_seed42_xai_image_ids.csv
+- /workspace/thesis-fl-xai/data/interim/fixed_xai_image_ids.csv
+- /workspace/thesis-fl-xai/data/interim/vindr_binary_image_level.csv
