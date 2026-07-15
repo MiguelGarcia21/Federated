@@ -27,7 +27,9 @@ def train_one_epoch(model, loader, criterion, optimizer, device) -> Dict[str, fl
     """
     model.train()
 
-    total_loss = 0.0
+    total_loss_numerator = 0.0
+    total_loss_denominator = 0.0
+
     all_preds = []
     all_labels = []
 
@@ -51,7 +53,25 @@ def train_one_epoch(model, loader, criterion, optimizer, device) -> Dict[str, fl
     loss.backward()
     optimizer.step()
 
-    total_loss += loss.item() * images.size(0)
+    if criterion.weight is None:
+        batch_loss_denominator = float(
+            labels.numel()
+        )
+    else:
+        batch_loss_denominator = float(
+            criterion.weight[labels]
+            .sum()
+            .item()
+        )
+
+    total_loss_numerator += (
+        float(loss.item())
+        * batch_loss_denominator
+    )
+
+    total_loss_denominator += (
+        batch_loss_denominator
+    )
 
     preds = torch.argmax(logits, dim=1)
 
@@ -61,7 +81,15 @@ def train_one_epoch(model, loader, criterion, optimizer, device) -> Dict[str, fl
     if len(loader.dataset) == 0:
         raise ValueError("Training loader contains no samples.")
 
-    avg_loss = total_loss / len(loader.dataset)
+    if total_loss_denominator <= 0.0:
+        raise ValueError(
+            "Training loss denominator must be greater than zero."
+        )
+
+    avg_loss = (
+        total_loss_numerator
+        / total_loss_denominator
+    )
     accuracy = accuracy_score(all_labels, all_preds)
 
     return {
@@ -125,7 +153,8 @@ def evaluate_model(
     if len(loader.dataset) == 0:
         raise ValueError("Evaluation loader contains no samples.")
 
-    total_loss = 0.0
+    total_loss_numerator = 0.0
+    total_loss_denominator = 0.0
 
     all_preds = []
     all_labels = []
@@ -151,7 +180,25 @@ def evaluate_model(
     preds = torch.argmax(probabilities, dim=1)
     confidences = probabilities.max(dim=1).values
 
-    total_loss += loss.item() * images.size(0)
+    if criterion.weight is None:
+        batch_loss_denominator = float(
+            labels.numel()
+        )
+    else:
+        batch_loss_denominator = float(
+            criterion.weight[labels]
+            .sum()
+            .item()
+        )
+
+    total_loss_numerator += (
+        float(loss.item())
+        * batch_loss_denominator
+    )
+
+    total_loss_denominator += (
+        batch_loss_denominator
+    )
 
     all_preds.extend(preds.detach().cpu().numpy().tolist())
     all_labels.extend(labels.detach().cpu().numpy().tolist())
@@ -168,7 +215,15 @@ def evaluate_model(
     probs_array = np.asarray(all_positive_probs, dtype=np.float64)
     confidences_array = np.asarray(all_confidences, dtype=np.float64)
 
-    avg_loss = total_loss / len(loader.dataset)
+    if total_loss_denominator <= 0.0:
+        raise ValueError(
+            "Evaluation loss denominator must be greater than zero."
+        )
+
+    avg_loss = (
+        total_loss_numerator
+        / total_loss_denominator
+    )
 
     tn, fp, fn, tp = confusion_matrix(
         labels_array,
