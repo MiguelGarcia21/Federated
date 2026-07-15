@@ -13,6 +13,7 @@ REPO_ROOT = Path(__file__).resolve().parents[2]
 if str(REPO_ROOT) not in sys.path:
     sys.path.insert(0, str(REPO_ROOT))
 
+from src.data.datasets import normalize_cache_extension
 from src.data.preprocess_vindr import prepare_vindr_full_data
 from src.data.split_clients import (
     create_iid_client_splits,
@@ -58,6 +59,7 @@ def validate_config(config: Dict[str, Any]) -> None:
         "project_root",
         "output_dir",
         "train_csv",
+        "image_source",
         "train_image_dir",
         "dataset",
         "task",
@@ -110,6 +112,68 @@ def validate_config(config: Dict[str, Any]) -> None:
         raise FileNotFoundError(
             "Configured train_image_dir does not exist or is not "
             f"a directory: {train_image_dir}"
+        )
+    
+    image_source = str(
+        config["image_source"]
+    ).strip().lower()
+
+    if image_source not in {"dicom", "cache"}:
+        raise ValueError(
+            "image_source must be either 'dicom' or 'cache'."
+        )
+
+    if image_source == "cache":
+        configured_cache_dir = config.get(
+            "image_cache_dir"
+        )
+
+        if (
+            configured_cache_dir is None
+            or not str(configured_cache_dir).strip()
+        ):
+            raise ValueError(
+                "image_cache_dir is required when "
+                "image_source='cache'."
+            )
+
+        cache_dir = Path(
+            configured_cache_dir
+        )
+
+        if not cache_dir.is_dir():
+            raise FileNotFoundError(
+                "Configured image cache directory does not exist: "
+                f"{cache_dir}"
+            )
+
+        cache_extension = normalize_cache_extension(
+            config.get(
+                "image_cache_extension",
+                ".png",
+            )
+        )
+
+        cache_num_workers = int(
+            config.get(
+                "cache_num_workers",
+                8,
+            )
+        )
+
+        if cache_num_workers <= 0:
+            raise ValueError(
+                "cache_num_workers must be greater than zero."
+            )
+
+    else:
+        cache_dir = None
+
+        cache_extension = normalize_cache_extension(
+            config.get(
+                "image_cache_extension",
+                ".png",
+            )
         )
 
     if str(config["dataset"]).lower() != "vindr":
@@ -219,6 +283,11 @@ def validate_config(config: Dict[str, Any]) -> None:
             )
 
     print("Federated experiment config validation passed.")
+    print("Configured image source:", image_source)
+
+    if image_source == "cache":
+        print("Configured image cache:", cache_dir)
+        print("Configured cache extension:", cache_extension)
 
 
 def create_client_splits(

@@ -16,6 +16,7 @@ from src.data.datasets import (
     VinDrBinaryDataset,
     get_train_transform,
     get_val_transform,
+    validate_image_cache,
 )
 from src.models.cnn import create_model
 from src.training.evaluate import evaluate_model, train_one_epoch
@@ -88,6 +89,53 @@ def weighted_average(
 
     return aggregated
 
+def resolve_image_source(
+    config: Dict[str, Any],
+) -> Tuple[str, Path | None, str]:
+    """Resolve and validate the configured image source."""
+    image_source = str(
+        config.get(
+            "image_source",
+            "dicom",
+        )
+    ).strip().lower()
+
+    if image_source not in {"dicom", "cache"}:
+        raise ValueError(
+            "image_source must be either 'dicom' or 'cache'."
+        )
+
+    cache_extension = str(
+        config.get(
+            "image_cache_extension",
+            ".png",
+        )
+    ).strip().lower()
+
+    cache_dir = None
+
+    if image_source == "cache":
+        configured_cache_dir = config.get(
+            "image_cache_dir"
+        )
+
+        if not configured_cache_dir:
+            raise ValueError(
+                "image_cache_dir is required when "
+                "image_source='cache'."
+            )
+
+        cache_dir = Path(
+            configured_cache_dir
+        )
+
+        if not cache_dir.is_dir():
+            raise FileNotFoundError(
+                "Configured image cache directory does not "
+                f"exist: {cache_dir}"
+            )
+
+    return image_source, cache_dir, cache_extension
 
 def make_loader_from_df(
     config: Dict[str, Any],
@@ -96,6 +144,9 @@ def make_loader_from_df(
 ) -> DataLoader:
     """Create a local Flower client DataLoader."""
     image_size = int(config["image_size"])
+    image_source, cache_dir, cache_extension = (
+        resolve_image_source(config)
+    )
 
     if shuffle:
         transform = get_train_transform(
@@ -113,6 +164,9 @@ def make_loader_from_df(
     dataset = VinDrBinaryDataset(
         df=df,
         transform=transform,
+        image_source=image_source,
+        cache_dir=cache_dir,
+        cache_extension=cache_extension,
     )
 
     num_workers = int(
@@ -169,7 +223,6 @@ class VinDrFlowerClient(fl.client.NumPyClient):
         self,
         client_id: int,
         client_train_df: pd.DataFrame,
-        shared_val_df: pd.DataFrame,
         config: Dict[str, Any],
     ):
         self.client_id = client_id
@@ -190,18 +243,18 @@ class VinDrFlowerClient(fl.client.NumPyClient):
             shuffle=True,
         )
 
-        self.val_loader = make_loader_from_df(
-            config=config,
-            df=shared_val_df,
-            shuffle=False,
-        )
-
         local_class_counts = (
             client_train_df["binary_label"]
             .value_counts()
             .sort_index()
-            .reindex([0, 1], fill_value=1)
+            .reindex([0, 1], fill_value=0)
         )
+
+        if (local_class_counts <= 0).any():
+            raise ValueError(
+                f"Client {client_id} must contain samples from both "
+                "binary classes."
+            )
 
         local_class_weights = (
             len(client_train_df)
@@ -289,81 +342,149 @@ class VinDrFlowerClient(fl.client.NumPyClient):
                 ),
             },
         )
+    
+        return (
+        float(metrics["loss"]),
+        len(self.val_loader.dataset),
+        float_metrics,
+    )
 
-    def evaluate(self, parameters, config):
+def make_centralized_evaluate_fn(
+    config: Dict[str, Any],
+    train_df: pd.DataFrame,
+    val_df: pd.DataFrame,
+):
+    """Create one server-side evaluation function for the global model."""
+    evaluation_device = resolve_client_device(config)
+
+    evaluation_model = create_model(
+        model_name=config.get(
+            "model_name",
+            "resnet18",
+        ),
+        num_classes=int(config["num_classes"]),
+        pretrained=bool(
+            config.get("pretrained", False)
+        ),
+    ).to(evaluation_device)
+
+    val_loader = make_loader_from_df(
+        config=config,
+        df=val_df,
+        shuffle=False,
+    )
+
+    global_class_counts = (
+        train_df["binary_label"]
+        .value_counts()
+        .sort_index()
+        .reindex([0, 1], fill_value=0)
+    )
+
+    if (global_class_counts <= 0).any():
+        raise ValueError(
+            "The complete federated training data must contain "
+            "samples from both binary classes."
+        )
+
+    global_class_weights = (
+        len(train_df)
+        / (2.0 * global_class_counts)
+    )
+
+    class_weights_tensor = torch.tensor(
+        global_class_weights.values,
+        dtype=torch.float32,
+        device=evaluation_device,
+    )
+
+    criterion = nn.CrossEntropyLoss(
+        weight=class_weights_tensor
+    )
+
+    metric_names = [
+        "accuracy",
+        "precision",
+        "recall",
+        "specificity",
+        "f1",
+        "auc",
+        "average_precision",
+        "balanced_accuracy",
+        "negative_predictive_value",
+        "false_positive_rate",
+        "false_negative_rate",
+        "mcc",
+        "brier_score",
+        "mean_positive_probability",
+        "mean_prediction_confidence",
+        "positive_prediction_rate",
+    ]
+
+    def evaluate_fn(
+        server_round: int,
+        parameters: List[np.ndarray],
+        evaluate_config: Dict[str, Any],
+    ):
+        del evaluate_config
+
+        # Preserve the previous experiment behavior: validation metrics
+        # begin after Round 1 rather than evaluating the untrained model.
+        if server_round == 0:
+            return None
+
         set_model_parameters(
-            self.model,
+            evaluation_model,
             parameters,
         )
 
-        self.model.to(self.device)
-
-        criterion = nn.CrossEntropyLoss(
-            weight=self.class_weights
-        )
+        evaluation_model.to(evaluation_device)
 
         evaluation_start_time = time.perf_counter()
 
         metrics = evaluate_model(
-            model=self.model,
-            loader=self.val_loader,
+            model=evaluation_model,
+            loader=val_loader,
             criterion=criterion,
-            device=self.device,
+            device=evaluation_device,
         )
 
         evaluation_runtime_seconds = (
             time.perf_counter() - evaluation_start_time
         )
 
-        float_metrics = {
-            "accuracy": metrics["accuracy"],
-            "precision": metrics["precision"],
-            "recall": metrics["recall"],
-            "specificity": metrics["specificity"],
-            "f1": metrics["f1"],
-            "auc": metrics["auc"],
-            "average_precision": metrics[
-                "average_precision"
-            ],
-            "balanced_accuracy": metrics[
-                "balanced_accuracy"
-            ],
-            "negative_predictive_value": metrics[
-                "negative_predictive_value"
-            ],
-            "false_positive_rate": metrics[
-                "false_positive_rate"
-            ],
-            "false_negative_rate": metrics[
-                "false_negative_rate"
-            ],
-            "mcc": metrics["mcc"],
-            "brier_score": metrics["brier_score"],
-            "mean_positive_probability": metrics[
-                "mean_positive_probability"
-            ],
-            "mean_prediction_confidence": metrics[
-                "mean_prediction_confidence"
-            ],
-            "positive_prediction_rate": metrics[
-                "positive_prediction_rate"
-            ],
-            "evaluation_runtime_seconds": (
-                evaluation_runtime_seconds
-            ),
-        }
+        flower_metrics: Dict[str, float | int] = {}
 
-        for key, value in float_metrics.items():
-            if np.isnan(value):
-                float_metrics[key] = 0.0
-            else:
-                float_metrics[key] = float(value)
+        for metric_name in metric_names:
+            metric_value = float(metrics[metric_name])
 
-        return (
-            float(metrics["loss"]),
-            len(self.val_loader.dataset),
-            float_metrics,
+            flower_metrics[metric_name] = (
+                0.0
+                if np.isnan(metric_value)
+                else metric_value
+            )
+
+        flower_metrics["evaluation_runtime_seconds"] = float(
+            evaluation_runtime_seconds
         )
+
+        flower_metrics["num_validation_samples"] = int(
+            len(val_loader.dataset)
+        )
+
+        validation_loss = float(metrics["loss"])
+
+        print(
+            "Centralized evaluation "
+            f"Round {server_round}: "
+            f"loss={validation_loss:.6f}, "
+            f"accuracy={flower_metrics['accuracy']:.6f}, "
+            f"runtime={evaluation_runtime_seconds:.2f}s"
+        )
+
+        return validation_loss, flower_metrics
+
+    return evaluate_fn
 
 
 class SaveModelFedAvg(fl.server.strategy.FedAvg):
@@ -462,61 +583,99 @@ class SaveModelFedAvg(fl.server.strategy.FedAvg):
 
 
 def history_to_dataframe(history) -> pd.DataFrame:
-    """Convert Flower history into one row per round."""
+    """Convert Flower history into one row per completed round."""
     fl_metrics_df = pd.DataFrame()
 
-    if history.losses_distributed:
+    centralized_losses = getattr(
+        history,
+        "losses_centralized",
+        [],
+    )
+
+    distributed_losses = getattr(
+        history,
+        "losses_distributed",
+        [],
+    )
+
+    if centralized_losses:
         fl_metrics_df = pd.DataFrame(
-            history.losses_distributed,
+            centralized_losses,
+            columns=[
+                "round",
+                "centralized_loss",
+            ],
+        )
+    elif distributed_losses:
+        fl_metrics_df = pd.DataFrame(
+            distributed_losses,
             columns=[
                 "round",
                 "distributed_loss",
             ],
         )
 
-    if hasattr(history, "metrics_distributed"):
-        for metric_name, values in (
-            history.metrics_distributed.items()
-        ):
-            metric_df = pd.DataFrame(
-                values,
-                columns=[
-                    "round",
-                    metric_name,
-                ],
-            )
+    centralized_metrics = getattr(
+        history,
+        "metrics_centralized",
+        {},
+    )
 
-            fl_metrics_df = (
-                metric_df
-                if fl_metrics_df.empty
-                else fl_metrics_df.merge(
-                    metric_df,
-                    on="round",
-                    how="outer",
-                )
-            )
+    distributed_metrics = getattr(
+        history,
+        "metrics_distributed",
+        {},
+    )
 
-    if hasattr(history, "metrics_distributed_fit"):
-        for metric_name, values in (
-            history.metrics_distributed_fit.items()
-        ):
-            metric_df = pd.DataFrame(
-                values,
-                columns=[
-                    "round",
-                    f"fit_{metric_name}",
-                ],
-            )
+    evaluation_metrics = (
+        centralized_metrics
+        if centralized_metrics
+        else distributed_metrics
+    )
 
-            fl_metrics_df = (
-                metric_df
-                if fl_metrics_df.empty
-                else fl_metrics_df.merge(
-                    metric_df,
-                    on="round",
-                    how="outer",
-                )
+    for metric_name, values in evaluation_metrics.items():
+        metric_df = pd.DataFrame(
+            values,
+            columns=[
+                "round",
+                metric_name,
+            ],
+        )
+
+        fl_metrics_df = (
+            metric_df
+            if fl_metrics_df.empty
+            else fl_metrics_df.merge(
+                metric_df,
+                on="round",
+                how="outer",
             )
+        )
+
+    distributed_fit_metrics = getattr(
+        history,
+        "metrics_distributed_fit",
+        {},
+    )
+
+    for metric_name, values in distributed_fit_metrics.items():
+        metric_df = pd.DataFrame(
+            values,
+            columns=[
+                "round",
+                f"fit_{metric_name}",
+            ],
+        )
+
+        fl_metrics_df = (
+            metric_df
+            if fl_metrics_df.empty
+            else fl_metrics_df.merge(
+                metric_df,
+                on="round",
+                how="outer",
+            )
+        )
 
     if not fl_metrics_df.empty:
         fl_metrics_df = (
@@ -562,6 +721,54 @@ def run_fedavg_debug(
             f"Expected {num_clients} client DataFrames, "
             f"received {len(client_dfs)}."
         )
+
+    image_source, cache_dir, cache_extension = (
+        resolve_image_source(config)
+    )
+
+    if image_source == "cache":
+        complete_image_df = pd.concat(
+            [
+                *client_dfs,
+                val_df,
+            ],
+            ignore_index=True,
+        )
+
+        if complete_image_df["image_id"].duplicated().any():
+            duplicate_ids = (
+                complete_image_df.loc[
+                    complete_image_df["image_id"].duplicated(
+                        keep=False
+                    ),
+                    "image_id",
+                ]
+                .astype(str)
+                .unique()
+                .tolist()
+            )
+
+            raise ValueError(
+                "Duplicate image IDs were found while validating "
+                f"the image cache. Examples: {duplicate_ids[:5]}"
+            )
+
+        if cache_dir is None:
+            raise RuntimeError(
+                "Cache mode was resolved without a cache directory."
+            )
+
+        validate_image_cache(
+            df=complete_image_df,
+            cache_dir=cache_dir,
+            cache_extension=cache_extension,
+        )
+
+        print("Flower image source: cached PNG")
+        print("Flower image cache:", cache_dir)
+
+    else:
+        print("Flower image source: original DICOM")
 
     initial_global_model = create_model(
         model_name=config.get(
@@ -619,23 +826,41 @@ def run_fedavg_debug(
         return VinDrFlowerClient(
             client_id=client_id,
             client_train_df=client_dfs[client_id],
-            shared_val_df=val_df,
             config=config,
         ).to_client()
+    
+    combined_train_df = pd.concat(
+        client_dfs,
+        ignore_index=True,
+    )
+
+    if len(combined_train_df) != sum(
+        len(client_df)
+        for client_df in client_dfs
+    ):
+        raise RuntimeError(
+            "Could not reconstruct the complete federated "
+            "training DataFrame."
+        )
+
+    centralized_evaluate_fn = make_centralized_evaluate_fn(
+        config=config,
+        train_df=combined_train_df,
+        val_df=val_df,
+    )
 
     strategy = SaveModelFedAvg(
         global_model=initial_global_model,
         checkpoint_dir=checkpoint_dir,
         config=config,
         fraction_fit=1.0,
-        fraction_evaluate=1.0,
+        fraction_evaluate=0.0,
         min_fit_clients=num_clients,
-        min_evaluate_clients=num_clients,
         min_available_clients=num_clients,
         initial_parameters=initial_parameters,
+        evaluate_fn=centralized_evaluate_fn,
         on_fit_config_fn=fit_config,
         fit_metrics_aggregation_fn=weighted_average,
-        evaluate_metrics_aggregation_fn=weighted_average,
     )
 
     client_resources = {

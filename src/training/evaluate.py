@@ -32,23 +32,31 @@ def train_one_epoch(model, loader, criterion, optimizer, device) -> Dict[str, fl
     all_labels = []
 
     for images, labels, _ in loader:
-        images = images.to(device)
-        labels = labels.to(device)
+        images = images.to(
+        device,
+        non_blocking=True,
+    )
+    labels = labels.to(
+        device,
+        non_blocking=True,
+    )
 
-        optimizer.zero_grad()
+    optimizer.zero_grad(
+        set_to_none=True
+    )
 
-        logits = model(images)
-        loss = criterion(logits, labels)
+    logits = model(images)
+    loss = criterion(logits, labels)
 
-        loss.backward()
-        optimizer.step()
+    loss.backward()
+    optimizer.step()
 
-        total_loss += loss.item() * images.size(0)
+    total_loss += loss.item() * images.size(0)
 
-        preds = torch.argmax(logits, dim=1)
+    preds = torch.argmax(logits, dim=1)
 
-        all_preds.extend(preds.detach().cpu().numpy())
-        all_labels.extend(labels.detach().cpu().numpy())
+    all_preds.extend(preds.detach().cpu().numpy())
+    all_labels.extend(labels.detach().cpu().numpy())
 
     if len(loader.dataset) == 0:
         raise ValueError("Training loader contains no samples.")
@@ -126,28 +134,34 @@ def evaluate_model(
     all_image_ids = []
 
     for images, labels, image_ids in loader:
-        images = images.to(device)
-        labels = labels.to(device)
+        images = images.to(
+        device,
+        non_blocking=True,
+    )
+    labels = labels.to(
+        device,
+        non_blocking=True,
+    )
 
-        logits = model(images)
-        loss = criterion(logits, labels)
+    logits = model(images)
+    loss = criterion(logits, labels)
 
-        probabilities = torch.softmax(logits, dim=1)
-        positive_probs = probabilities[:, 1]
-        preds = torch.argmax(probabilities, dim=1)
-        confidences = probabilities.max(dim=1).values
+    probabilities = torch.softmax(logits, dim=1)
+    positive_probs = probabilities[:, 1]
+    preds = torch.argmax(probabilities, dim=1)
+    confidences = probabilities.max(dim=1).values
 
-        total_loss += loss.item() * images.size(0)
+    total_loss += loss.item() * images.size(0)
 
-        all_preds.extend(preds.detach().cpu().numpy().tolist())
-        all_labels.extend(labels.detach().cpu().numpy().tolist())
-        all_positive_probs.extend(
+    all_preds.extend(preds.detach().cpu().numpy().tolist())
+    all_labels.extend(labels.detach().cpu().numpy().tolist())
+    all_positive_probs.extend(
             positive_probs.detach().cpu().numpy().tolist()
         )
-        all_confidences.extend(
+    all_confidences.extend(
             confidences.detach().cpu().numpy().tolist()
         )
-        all_image_ids.extend(list(image_ids))
+    all_image_ids.extend(list(image_ids))
 
     labels_array = np.asarray(all_labels, dtype=np.int64)
     preds_array = np.asarray(all_preds, dtype=np.int64)

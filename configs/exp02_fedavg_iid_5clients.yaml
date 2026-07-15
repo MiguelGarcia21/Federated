@@ -33,6 +33,16 @@ num_classes: 2
 pretrained: false
 image_size: 224
 
+# Image loading
+# Use the reusable lossless PNG cache instead of decoding DICOM
+# during every local epoch and validation pass.
+image_source: "cache"
+image_cache_dir: "/workspace/thesis-fl-xai/data/processed/vindr_binary_224_png"
+image_cache_extension: ".png"
+
+# Used only by the separate cache-generation command.
+cache_num_workers: 8
+
 # Local training
 batch_size: 16
 learning_rate: 0.0001
