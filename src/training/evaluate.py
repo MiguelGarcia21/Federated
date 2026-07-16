@@ -18,14 +18,20 @@ from sklearn.metrics import (
 )
 
 
-def train_one_epoch(model, loader, criterion, optimizer, device) -> Dict[str, float]:
-    """Train the model for one epoch.
-
-    This preserves the Phase 5 behavior and return structure.
-    Additional training-side metrics can be added later if they become
-    necessary for a specific experiment.
-    """
+def train_one_epoch(
+    model,
+    loader,
+    criterion,
+    optimizer,
+    device,
+) -> Dict[str, float]:
+    """Train the model for one complete epoch."""
     model.train()
+
+    if len(loader.dataset) == 0:
+        raise ValueError(
+            "Training loader contains no samples."
+        )
 
     total_loss_numerator = 0.0
     total_loss_denominator = 0.0
@@ -35,62 +41,82 @@ def train_one_epoch(model, loader, criterion, optimizer, device) -> Dict[str, fl
 
     for images, labels, _ in loader:
         images = images.to(
-        device,
-        non_blocking=True,
-    )
-    labels = labels.to(
-        device,
-        non_blocking=True,
-    )
-
-    optimizer.zero_grad(
-        set_to_none=True
-    )
-
-    logits = model(images)
-    loss = criterion(logits, labels)
-
-    loss.backward()
-    optimizer.step()
-
-    if criterion.weight is None:
-        batch_loss_denominator = float(
-            labels.numel()
-        )
-    else:
-        batch_loss_denominator = float(
-            criterion.weight[labels]
-            .sum()
-            .item()
+            device,
+            non_blocking=True,
         )
 
-    total_loss_numerator += (
-        float(loss.item())
-        * batch_loss_denominator
-    )
+        labels = labels.to(
+            device,
+            non_blocking=True,
+        )
 
-    total_loss_denominator += (
-        batch_loss_denominator
-    )
+        optimizer.zero_grad(
+            set_to_none=True
+        )
 
-    preds = torch.argmax(logits, dim=1)
+        logits = model(images)
+        loss = criterion(logits, labels)
 
-    all_preds.extend(preds.detach().cpu().numpy())
-    all_labels.extend(labels.detach().cpu().numpy())
+        loss.backward()
+        optimizer.step()
 
-    if len(loader.dataset) == 0:
-        raise ValueError("Training loader contains no samples.")
+        if criterion.weight is None:
+            batch_loss_denominator = float(
+                labels.numel()
+            )
+        else:
+            batch_loss_denominator = float(
+                criterion.weight[labels]
+                .sum()
+                .item()
+            )
+
+        total_loss_numerator += (
+            float(loss.item())
+            * batch_loss_denominator
+        )
+
+        total_loss_denominator += (
+            batch_loss_denominator
+        )
+
+        preds = torch.argmax(
+            logits,
+            dim=1,
+        )
+
+        all_preds.extend(
+            preds.detach().cpu().numpy().tolist()
+        )
+
+        all_labels.extend(
+            labels.detach().cpu().numpy().tolist()
+        )
 
     if total_loss_denominator <= 0.0:
         raise ValueError(
             "Training loss denominator must be greater than zero."
         )
 
+    expected_samples = len(loader.dataset)
+    collected_samples = len(all_labels)
+
+    if collected_samples != expected_samples:
+        raise RuntimeError(
+            "Training metric collection did not cover the complete "
+            f"dataset: expected {expected_samples}, "
+            f"collected {collected_samples}."
+        )
+
     avg_loss = (
         total_loss_numerator
         / total_loss_denominator
     )
-    accuracy = accuracy_score(all_labels, all_preds)
+
+    accuracy = accuracy_score(
+        all_labels,
+        all_preds,
+    )
 
     return {
         "loss": float(avg_loss),
@@ -105,53 +131,17 @@ def evaluate_model(
     criterion,
     device,
     return_predictions: bool = False,
-) -> Dict[str, Any] | Tuple[Dict[str, Any], pd.DataFrame]:
-    """Evaluate a binary classifier and return thesis-ready metrics.
-
-    The original Phase 5 metric keys are preserved:
-
-    - loss
-    - accuracy
-    - precision
-    - recall
-    - f1
-    - auc
-
-    Additional metrics are included for class imbalance, threshold behavior,
-    calibration, error analysis, and later federated/XAI comparisons.
-
-    Parameters
-    ----------
-    model:
-        PyTorch classification model.
-
-    loader:
-        DataLoader yielding:
-            images, labels, image_ids
-
-    criterion:
-        Loss function used for validation loss.
-
-    device:
-        PyTorch device.
-
-    return_predictions:
-        When False, return only the metrics dictionary.
-        When True, return:
-            metrics, predictions_dataframe
-
-    Returns
-    -------
-    Dict[str, Any]
-        Metrics dictionary when return_predictions=False.
-
-    Tuple[Dict[str, Any], pd.DataFrame]
-        Metrics and per-image predictions when return_predictions=True.
-    """
+) -> Dict[str, Any] | Tuple[
+    Dict[str, Any],
+    pd.DataFrame,
+]:
+    """Evaluate a binary classifier on the complete DataLoader."""
     model.eval()
 
     if len(loader.dataset) == 0:
-        raise ValueError("Evaluation loader contains no samples.")
+        raise ValueError(
+            "Evaluation loader contains no samples."
+        )
 
     total_loss_numerator = 0.0
     total_loss_denominator = 0.0
@@ -164,61 +154,137 @@ def evaluate_model(
 
     for images, labels, image_ids in loader:
         images = images.to(
-        device,
-        non_blocking=True,
-    )
-    labels = labels.to(
-        device,
-        non_blocking=True,
-    )
-
-    logits = model(images)
-    loss = criterion(logits, labels)
-
-    probabilities = torch.softmax(logits, dim=1)
-    positive_probs = probabilities[:, 1]
-    preds = torch.argmax(probabilities, dim=1)
-    confidences = probabilities.max(dim=1).values
-
-    if criterion.weight is None:
-        batch_loss_denominator = float(
-            labels.numel()
-        )
-    else:
-        batch_loss_denominator = float(
-            criterion.weight[labels]
-            .sum()
-            .item()
+            device,
+            non_blocking=True,
         )
 
-    total_loss_numerator += (
-        float(loss.item())
-        * batch_loss_denominator
-    )
-
-    total_loss_denominator += (
-        batch_loss_denominator
-    )
-
-    all_preds.extend(preds.detach().cpu().numpy().tolist())
-    all_labels.extend(labels.detach().cpu().numpy().tolist())
-    all_positive_probs.extend(
-            positive_probs.detach().cpu().numpy().tolist()
+        labels = labels.to(
+            device,
+            non_blocking=True,
         )
-    all_confidences.extend(
-            confidences.detach().cpu().numpy().tolist()
-        )
-    all_image_ids.extend(list(image_ids))
 
-    labels_array = np.asarray(all_labels, dtype=np.int64)
-    preds_array = np.asarray(all_preds, dtype=np.int64)
-    probs_array = np.asarray(all_positive_probs, dtype=np.float64)
-    confidences_array = np.asarray(all_confidences, dtype=np.float64)
+        logits = model(images)
+        loss = criterion(logits, labels)
+
+        probabilities = torch.softmax(
+            logits,
+            dim=1,
+        )
+
+        positive_probs = probabilities[:, 1]
+
+        preds = torch.argmax(
+            probabilities,
+            dim=1,
+        )
+
+        confidences = probabilities.max(
+            dim=1
+        ).values
+
+        if criterion.weight is None:
+            batch_loss_denominator = float(
+                labels.numel()
+            )
+        else:
+            batch_loss_denominator = float(
+                criterion.weight[labels]
+                .sum()
+                .item()
+            )
+
+        total_loss_numerator += (
+            float(loss.item())
+            * batch_loss_denominator
+        )
+
+        total_loss_denominator += (
+            batch_loss_denominator
+        )
+
+        all_preds.extend(
+            preds.detach().cpu().numpy().tolist()
+        )
+
+        all_labels.extend(
+            labels.detach().cpu().numpy().tolist()
+        )
+
+        all_positive_probs.extend(
+            positive_probs
+            .detach()
+            .cpu()
+            .numpy()
+            .tolist()
+        )
+
+        all_confidences.extend(
+            confidences
+            .detach()
+            .cpu()
+            .numpy()
+            .tolist()
+        )
+
+        all_image_ids.extend(
+            list(image_ids)
+        )
+
+    expected_samples = len(loader.dataset)
+    collected_samples = len(all_labels)
+
+    if collected_samples != expected_samples:
+        raise RuntimeError(
+            "Evaluation metric collection did not cover the "
+            f"complete dataset: expected {expected_samples}, "
+            f"collected {collected_samples}."
+        )
+
+    if len(all_preds) != expected_samples:
+        raise RuntimeError(
+            "Evaluation prediction count does not match the "
+            f"dataset size: expected {expected_samples}, "
+            f"collected {len(all_preds)}."
+        )
+
+    if len(all_positive_probs) != expected_samples:
+        raise RuntimeError(
+            "Evaluation probability count does not match the "
+            f"dataset size: expected {expected_samples}, "
+            f"collected {len(all_positive_probs)}."
+        )
+
+    if len(all_image_ids) != expected_samples:
+        raise RuntimeError(
+            "Evaluation image ID count does not match the "
+            f"dataset size: expected {expected_samples}, "
+            f"collected {len(all_image_ids)}."
+        )
 
     if total_loss_denominator <= 0.0:
         raise ValueError(
             "Evaluation loss denominator must be greater than zero."
         )
+
+    labels_array = np.asarray(
+        all_labels,
+        dtype=np.int64,
+    )
+
+    preds_array = np.asarray(
+        all_preds,
+        dtype=np.int64,
+    )
+
+    probs_array = np.asarray(
+        all_positive_probs,
+        dtype=np.float64,
+    )
+
+    confidences_array = np.asarray(
+        all_confidences,
+        dtype=np.float64,
+    )
 
     avg_loss = (
         total_loss_numerator
@@ -231,11 +297,25 @@ def evaluate_model(
         labels=[0, 1],
     ).ravel()
 
-    num_samples = int(len(labels_array))
-    num_actual_positive = int(tp + fn)
-    num_actual_negative = int(tn + fp)
-    num_predicted_positive = int(tp + fp)
-    num_predicted_negative = int(tn + fn)
+    num_samples = int(
+        len(labels_array)
+    )
+
+    num_actual_positive = int(
+        tp + fn
+    )
+
+    num_actual_negative = int(
+        tn + fp
+    )
+
+    num_predicted_positive = int(
+        tp + fp
+    )
+
+    num_predicted_negative = int(
+        tn + fn
+    )
 
     actual_positive_rate = (
         num_actual_positive / num_samples
@@ -282,7 +362,10 @@ def evaluate_model(
     metrics: Dict[str, Any] = {
         "loss": float(avg_loss),
         "accuracy": float(
-            accuracy_score(labels_array, preds_array)
+            accuracy_score(
+                labels_array,
+                preds_array,
+            )
         ),
         "precision": float(
             precision_score(
@@ -305,7 +388,9 @@ def evaluate_model(
                 zero_division=0,
             )
         ),
-        "specificity": float(specificity),
+        "specificity": float(
+            specificity
+        ),
         "balanced_accuracy": float(
             balanced_accuracy_score(
                 labels_array,
@@ -315,8 +400,12 @@ def evaluate_model(
         "negative_predictive_value": float(
             negative_predictive_value
         ),
-        "false_positive_rate": float(false_positive_rate),
-        "false_negative_rate": float(false_negative_rate),
+        "false_positive_rate": float(
+            false_positive_rate
+        ),
+        "false_negative_rate": float(
+            false_negative_rate
+        ),
         "mcc": float(
             matthews_corrcoef(
                 labels_array,
@@ -342,7 +431,9 @@ def evaluate_model(
         "num_samples": num_samples,
         "num_actual_positive": num_actual_positive,
         "num_actual_negative": num_actual_negative,
-        "actual_positive_rate": float(actual_positive_rate),
+        "actual_positive_rate": float(
+            actual_positive_rate
+        ),
         "num_predicted_positive": num_predicted_positive,
         "num_predicted_negative": num_predicted_negative,
         "positive_prediction_rate": float(
@@ -382,7 +473,9 @@ def evaluate_model(
         "predicted_label": preds_array,
         "positive_probability": probs_array,
         "prediction_confidence": confidences_array,
-        "correct": labels_array == preds_array,
+        "correct": (
+            labels_array == preds_array
+        ),
     })
 
     return metrics, predictions_df
