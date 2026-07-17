@@ -209,6 +209,22 @@ def validate_config(config: Dict[str, Any]) -> None:
             f"Unsupported split_type={split_type!r}. "
             f"Supported values: {sorted(SUPPORTED_SPLIT_TYPES)}"
         )
+    
+    class_weight_scope = str(
+        config.get(
+            "class_weight_scope",
+            "local",
+        )
+    ).strip().lower()
+
+    if class_weight_scope not in {
+        "local",
+        "global",
+    }:
+        raise ValueError(
+            "class_weight_scope must be either "
+            "'local' or 'global'."
+        )
 
     if int(config["fl_num_clients"]) < 2:
         raise ValueError(
@@ -273,8 +289,14 @@ def validate_config(config: Dict[str, Any]) -> None:
         )
 
     if split_type == "non_iid_label_skew":
+        if "non_iid_skew_strength" not in config:
+            raise KeyError(
+                "non_iid_label_skew requires "
+                "non_iid_skew_strength."
+            )
+
         skew_strength = float(
-            config.get("non_iid_skew_strength", 4.0)
+            config["non_iid_skew_strength"]
         )
 
         if skew_strength < 1.0:
@@ -282,8 +304,24 @@ def validate_config(config: Dict[str, Any]) -> None:
                 "non_iid_skew_strength must be at least 1.0."
             )
 
+        if "class_weight_scope" not in config:
+            raise KeyError(
+                "non_iid_label_skew experiments must explicitly "
+                "define class_weight_scope."
+            )
+
     print("Federated experiment config validation passed.")
-    print("Configured image source:", image_source)
+    print("Configured split type:", split_type)
+    print(
+        "Configured class-weight scope:",
+        class_weight_scope,
+    )
+
+    if split_type == "non_iid_label_skew":
+        print(
+            "Configured non-IID skew strength:",
+            skew_strength,
+        )
 
     if image_source == "cache":
         print("Configured image cache:", cache_dir)

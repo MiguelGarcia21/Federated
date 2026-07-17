@@ -217,6 +217,32 @@ def resolve_client_device(
         "fl_client_device must be either 'cpu' or 'cuda'."
     )
 
+def compute_binary_class_weights(
+    df: pd.DataFrame,
+    source_name: str,
+) -> np.ndarray:
+    """Calculate inverse-frequency weights for binary labels."""
+    class_counts = (
+        df["binary_label"]
+        .value_counts()
+        .sort_index()
+        .reindex([0, 1], fill_value=0)
+    )
+
+    if (class_counts <= 0).any():
+        raise ValueError(
+            f"{source_name} must contain samples from both "
+            "binary classes."
+        )
+
+    class_weights = (
+        len(df)
+        / (2.0 * class_counts)
+    )
+
+    return class_weights.to_numpy(
+        dtype=np.float32
+    )
 
 class VinDrFlowerClient(fl.client.NumPyClient):
     def __init__(
@@ -224,6 +250,7 @@ class VinDrFlowerClient(fl.client.NumPyClient):
         client_id: int,
         client_train_df: pd.DataFrame,
         config: Dict[str, Any],
+        global_class_weights: np.ndarray | None = None,
     ):
         self.client_id = client_id
         self.config = config
@@ -250,19 +277,57 @@ class VinDrFlowerClient(fl.client.NumPyClient):
             .reindex([0, 1], fill_value=0)
         )
 
-        if (local_class_counts <= 0).any():
-            raise ValueError(
-                f"Client {client_id} must contain samples from both "
-                "binary classes."
+        class_weight_scope = str(
+            config.get(
+                "class_weight_scope",
+                "local",
+            )
+        ).strip().lower()
+
+        if class_weight_scope == "local":
+            selected_class_weights = (
+                compute_binary_class_weights(
+                    df=client_train_df,
+                    source_name=f"Client {client_id}",
+                )
             )
 
-        local_class_weights = (
-            len(client_train_df)
-            / (2.0 * local_class_counts)
-        )
+        elif class_weight_scope == "global":
+            if global_class_weights is None:
+                raise ValueError(
+                    "global_class_weights must be provided when "
+                    "class_weight_scope='global'."
+                )
+
+            selected_class_weights = np.asarray(
+                global_class_weights,
+                dtype=np.float32,
+            )
+
+            if selected_class_weights.shape != (2,):
+                raise ValueError(
+                    "Global class weights must contain exactly two "
+                    "values ordered as labels [0, 1]."
+                )
+
+            if (
+                not np.isfinite(selected_class_weights).all()
+                or (selected_class_weights <= 0).any()
+            ):
+                raise ValueError(
+                    "Global class weights must be finite and positive."
+                )
+
+        else:
+            raise ValueError(
+                "class_weight_scope must be either "
+                "'local' or 'global'."
+            )
+
+        self.class_weight_scope = class_weight_scope
 
         self.class_weights = torch.tensor(
-            local_class_weights.values,
+            selected_class_weights,
             dtype=torch.float32,
             device=self.device,
         )
@@ -342,12 +407,6 @@ class VinDrFlowerClient(fl.client.NumPyClient):
                 ),
             },
         )
-    
-        return (
-        float(metrics["loss"]),
-        len(self.val_loader.dataset),
-        float_metrics,
-    )
 
 def make_centralized_evaluate_fn(
     config: Dict[str, Any],
@@ -374,26 +433,13 @@ def make_centralized_evaluate_fn(
         shuffle=False,
     )
 
-    global_class_counts = (
-        train_df["binary_label"]
-        .value_counts()
-        .sort_index()
-        .reindex([0, 1], fill_value=0)
-    )
-
-    if (global_class_counts <= 0).any():
-        raise ValueError(
-            "The complete federated training data must contain "
-            "samples from both binary classes."
-        )
-
-    global_class_weights = (
-        len(train_df)
-        / (2.0 * global_class_counts)
+    global_class_weights = compute_binary_class_weights(
+        df=train_df,
+        source_name="Complete federated training data",
     )
 
     class_weights_tensor = torch.tensor(
-        global_class_weights.values,
+        global_class_weights,
         dtype=torch.float32,
         device=evaluation_device,
     )
@@ -819,6 +865,71 @@ def run_fedavg_debug(
             "server_round": server_round,
             "local_epochs": local_epochs,
         }
+    
+    combined_train_df = pd.concat(
+        client_dfs,
+        ignore_index=True,
+    )
+
+    expected_training_samples = sum(
+        len(client_df)
+        for client_df in client_dfs
+    )
+
+    if len(combined_train_df) != expected_training_samples:
+        raise RuntimeError(
+            "Could not reconstruct the complete federated "
+            "training DataFrame."
+        )
+
+    if combined_train_df["image_id"].duplicated().any():
+        duplicate_ids = (
+            combined_train_df.loc[
+                combined_train_df["image_id"].duplicated(
+                    keep=False
+                ),
+                "image_id",
+            ]
+            .astype(str)
+            .unique()
+            .tolist()
+        )
+
+        raise ValueError(
+            "Duplicate image IDs were found in the combined "
+            f"federated training data. Examples: {duplicate_ids[:5]}"
+        )
+
+    class_weight_scope = str(
+        config.get(
+            "class_weight_scope",
+            "local",
+        )
+    ).strip().lower()
+
+    if class_weight_scope not in {"local", "global"}:
+        raise ValueError(
+            "class_weight_scope must be either "
+            "'local' or 'global'."
+        )
+
+    global_client_class_weights = None
+
+    if class_weight_scope == "global":
+        global_client_class_weights = (
+            compute_binary_class_weights(
+                df=combined_train_df,
+                source_name="Complete federated training data",
+            )
+        )
+
+    print("Client class-weight scope:", class_weight_scope)
+
+    if global_client_class_weights is not None:
+        print(
+            "Global client class weights:",
+            global_client_class_weights.tolist(),
+        )
 
     def client_fn(cid: str):
         client_id = int(cid)
@@ -827,21 +938,8 @@ def run_fedavg_debug(
             client_id=client_id,
             client_train_df=client_dfs[client_id],
             config=config,
+            global_class_weights=global_client_class_weights,
         ).to_client()
-    
-    combined_train_df = pd.concat(
-        client_dfs,
-        ignore_index=True,
-    )
-
-    if len(combined_train_df) != sum(
-        len(client_df)
-        for client_df in client_dfs
-    ):
-        raise RuntimeError(
-            "Could not reconstruct the complete federated "
-            "training DataFrame."
-        )
 
     centralized_evaluate_fn = make_centralized_evaluate_fn(
         config=config,
@@ -925,6 +1023,30 @@ def run_fedavg_debug(
     fl_metrics_df["model_name"] = config.get(
         "model_name",
         "resnet18",
+    )
+    fl_metrics_df["class_weight_scope"] = str(
+        config.get(
+            "class_weight_scope",
+            "local",
+        )
+    )
+
+    fl_metrics_df["non_iid_skew_strength"] = (
+        float(config["non_iid_skew_strength"])
+        if str(
+            config.get(
+                "split_type",
+                "iid",
+            )
+        ).lower() == "non_iid_label_skew"
+        else np.nan
+    )
+
+    fl_metrics_df["image_source"] = str(
+        config.get(
+            "image_source",
+            "dicom",
+        )
     )
     fl_metrics_df["dataset"] = config.get(
         "dataset",
