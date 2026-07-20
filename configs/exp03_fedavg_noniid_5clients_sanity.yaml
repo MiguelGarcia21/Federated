@@ -1,0 +1,83 @@
+# Experiment 3:
+# Full VinDr binary FedAvg experiment with 5 non-IID clients
+# using reproducible label-distribution skew.
+
+experiment_id: "exp03_fedavg_noniid_5clients_5round_sanity_seed42"
+run_type: "flower_fedavg"
+
+project_root: "/workspace/thesis-fl-xai"
+raw_data_dir: "/workspace/data/raw/vindr"
+output_dir: "/workspace/thesis-fl-xai/outputs"
+
+train_csv: "/workspace/data/raw/vindr/train.csv"
+train_image_dir: "/workspace/data/raw/vindr/train"
+
+dataset: "vindr"
+task: "binary_abnormal"
+
+# Keep the same train/validation protocol as Experiments 1 and 2
+use_full_dataset: true
+reuse_split_files: true
+
+canonical_train_split_path: "/workspace/thesis-fl-xai/data/interim/exp01_centralized_vindr_binary_seed42_train_split.csv"
+canonical_val_split_path: "/workspace/thesis-fl-xai/data/interim/exp01_centralized_vindr_binary_seed42_val_split.csv"
+canonical_xai_ids_path: "/workspace/thesis-fl-xai/data/interim/exp01_centralized_vindr_binary_seed42_xai_image_ids.csv"
+
+val_fraction: 0.20
+
+# Fixed validation subset for later XAI comparisons
+xai_subset_size: 200
+
+# Model
+model_name: "resnet18"
+num_classes: 2
+pretrained: false
+image_size: 224
+
+# Image loading
+# Reuse the validated PNG cache created for Experiment 2.
+image_source: "cache"
+image_cache_dir: "/workspace/thesis-fl-xai/data/processed/vindr_binary_224_png"
+image_cache_extension: ".png"
+
+# Used only if the cache-generation command is run again.
+cache_num_workers: 8
+
+# Local client training
+batch_size: 16
+learning_rate: 0.0001
+weight_decay: 0.01
+horizontal_flip: true
+rotation_degrees: 0.0
+
+# Federated learning
+fl_algorithm: "fedavg"
+fl_num_clients: 5
+fl_num_rounds: 5
+fl_local_epochs: 1
+split_type: "non_iid_label_skew"
+
+# Controls the class-distribution difference between clients.
+# 1.0 is close to IID; larger values create stronger skew.
+non_iid_skew_strength: 4.0
+
+# Use the same complete-training-set class weights for every client.
+# This prevents local inverse-frequency weights from cancelling the
+# intended client label-distribution skew.
+class_weight_scope: "global"
+
+# Flower client execution
+fl_client_device: "cuda"
+fl_client_num_cpus: 2
+fl_client_num_gpus: 1.0
+fl_num_workers: 2
+
+# Save selected rounds for later explanation tracking
+save_checkpoints_every: 1
+save_initial_checkpoint: true
+
+# Reproducibility
+seed: 42
+
+# Output behavior
+create_output_zip: false
