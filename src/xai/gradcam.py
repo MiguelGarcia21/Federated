@@ -12,6 +12,7 @@ from src.data.datasets import (
     VinDrBinaryDataset,
     denormalize_tensor,
     get_val_transform,
+    validate_image_cache,
 )
 from src.models.cnn import create_model
 
@@ -346,11 +347,78 @@ def generate_gradcam_outputs(
             f"{missing_ids[:5]}"
         )
 
+    image_source = str(
+        config.get(
+            "image_source",
+            "dicom",
+        )
+    ).strip().lower()
+
+    if image_source not in {
+        "dicom",
+        "cache",
+    }:
+        gradcam.remove_hooks()
+
+        raise ValueError(
+            "image_source must be either "
+            "'dicom' or 'cache'."
+        )
+
+    cache_extension = str(
+        config.get(
+            "image_cache_extension",
+            ".png",
+        )
+    ).strip().lower()
+
+    cache_dir = None
+
+    if image_source == "cache":
+        configured_cache_dir = config.get(
+            "image_cache_dir"
+        )
+
+        if not configured_cache_dir:
+            gradcam.remove_hooks()
+
+            raise ValueError(
+                "image_cache_dir is required when "
+                "image_source='cache'."
+            )
+
+        cache_dir = Path(
+            configured_cache_dir
+        )
+
+        if not cache_dir.is_dir():
+            gradcam.remove_hooks()
+
+            raise FileNotFoundError(
+                "Configured Grad-CAM image cache directory "
+                f"does not exist: {cache_dir}"
+            )
+
+        validate_image_cache(
+            df=xai_df,
+            cache_dir=cache_dir,
+            cache_extension=cache_extension,
+        )
+
+        print("Grad-CAM image source: cached PNG")
+        print("Grad-CAM image cache:", cache_dir)
+
+    else:
+        print("Grad-CAM image source: original DICOM")
+
     xai_dataset = VinDrBinaryDataset(
-        xai_df,
+        df=xai_df,
         transform=get_val_transform(
             int(config["image_size"])
         ),
+        image_source=image_source,
+        cache_dir=cache_dir,
+        cache_extension=cache_extension,
     )
 
     if round_num is None:
