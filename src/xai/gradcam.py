@@ -515,9 +515,20 @@ def generate_gradcam_outputs(
                     "binary_abnormal",
                 ),
                 "training_type": run_type,
-                "split_type": config.get(
-                    "split_type",
-                    "centralized",
+                "split_type": str(
+                    config.get(
+                        "source_split_type",
+                        config.get(
+                            "split_type",
+                            "centralized",
+                        ),
+                    )
+                ),
+                "image_source": str(
+                    config.get(
+                        "image_source",
+                        "dicom",
+                    )
                 ),
                 "round": round_num,
                 "checkpoint_path": str(
