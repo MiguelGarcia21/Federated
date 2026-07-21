@@ -283,7 +283,7 @@ def compare_heatmaps(
     heatmap_a: np.ndarray,
     heatmap_b: np.ndarray,
     threshold: float = 0.5,
-) -> Dict[str, float]:
+) -> Dict[str, float | bool]:
     """Compute the initial Phase 6 heatmap-stability metrics."""
     validate_heatmap_pair(
         heatmap_a,
@@ -335,7 +335,7 @@ def compare_heatmap_files(
     heatmap_path_a: str | Path,
     heatmap_path_b: str | Path,
     threshold: float = 0.5,
-) -> Dict[str, float]:
+) -> Dict[str, float | bool]:
     """Load two heatmap files and compute stability metrics."""
     heatmap_a = load_heatmap(
         heatmap_path_a

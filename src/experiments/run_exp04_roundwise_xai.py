@@ -7,6 +7,23 @@ import pandas as pd
 import torch
 import yaml
 
+HEATMAP_COMPARISON_FIELDS = [
+    "pearson_correlation",
+    "cosine_similarity",
+    "mean_absolute_error",
+    "mean_squared_error",
+    "intersection_over_union",
+    "dice_score",
+    "threshold",
+    "heatmap_a_mean",
+    "heatmap_b_mean",
+    "heatmap_a_std",
+    "heatmap_b_std",
+    "heatmap_a_max",
+    "heatmap_b_max",
+    "is_degenerate_pair",
+]
+
 REPO_ROOT = Path(__file__).resolve().parents[2]
 
 if str(REPO_ROOT) not in sys.path:
@@ -175,6 +192,188 @@ def validate_checkpoints(
         f"Validated {len(checkpoint_rounds)} checkpoints."
     )
 
+def validate_roundwise_metadata(
+    metadata_df: pd.DataFrame,
+    expected_image_ids: List[str],
+    checkpoint_rounds: List[int],
+) -> None:
+    """Validate one Grad-CAM record per image and checkpoint round."""
+    required_columns = {
+        "image_id",
+        "round",
+        "true_label",
+        "predicted_label",
+        "raw_heatmap_path",
+        "overlay_path",
+    }
+
+    missing_columns = required_columns.difference(
+        metadata_df.columns
+    )
+
+    if missing_columns:
+        raise ValueError(
+            "Round-wise Grad-CAM metadata is missing columns: "
+            + ", ".join(sorted(missing_columns))
+        )
+
+    expected_ids = {
+        str(image_id)
+        for image_id in expected_image_ids
+    }
+
+    actual_ids = set(
+        metadata_df["image_id"].astype(str)
+    )
+
+    missing_ids = sorted(
+        expected_ids.difference(actual_ids)
+    )
+
+    unexpected_ids = sorted(
+        actual_ids.difference(expected_ids)
+    )
+
+    if missing_ids:
+        raise ValueError(
+            f"{len(missing_ids)} expected XAI images are missing "
+            f"from the combined metadata. Examples: "
+            f"{missing_ids[:5]}"
+        )
+
+    if unexpected_ids:
+        raise ValueError(
+            f"{len(unexpected_ids)} unexpected image IDs were found "
+            f"in the combined metadata. Examples: "
+            f"{unexpected_ids[:5]}"
+        )
+
+    expected_rounds = {
+        int(round_number)
+        for round_number in checkpoint_rounds
+    }
+
+    actual_rounds = {
+        int(round_number)
+        for round_number in metadata_df["round"].unique()
+    }
+
+    if actual_rounds != expected_rounds:
+        missing_rounds = sorted(
+            expected_rounds.difference(actual_rounds)
+        )
+
+        unexpected_rounds = sorted(
+            actual_rounds.difference(expected_rounds)
+        )
+
+        raise ValueError(
+            "Round-wise metadata does not contain the expected rounds. "
+            f"Missing: {missing_rounds}; "
+            f"unexpected: {unexpected_rounds}."
+        )
+
+    duplicate_mask = metadata_df.duplicated(
+        subset=[
+            "image_id",
+            "round",
+        ],
+        keep=False,
+    )
+
+    if duplicate_mask.any():
+        duplicate_rows = (
+            metadata_df.loc[
+                duplicate_mask,
+                [
+                    "image_id",
+                    "round",
+                ],
+            ]
+            .head(10)
+            .to_dict("records")
+        )
+
+        raise ValueError(
+            "Duplicate image-round Grad-CAM records were found. "
+            f"Examples: {duplicate_rows}"
+        )
+
+    expected_rows = (
+        len(expected_ids)
+        * len(expected_rounds)
+    )
+
+    if len(metadata_df) != expected_rows:
+        raise ValueError(
+            "Unexpected number of Grad-CAM metadata rows. "
+            f"Expected {expected_rows}, found {len(metadata_df)}."
+        )
+
+    counts_per_image = (
+        metadata_df
+        .groupby("image_id")["round"]
+        .nunique()
+    )
+
+    invalid_counts = counts_per_image[
+        counts_per_image != len(expected_rounds)
+    ]
+
+    if not invalid_counts.empty:
+        raise ValueError(
+            "One or more images do not contain exactly one record "
+            "for every requested checkpoint round. Examples: "
+            f"{invalid_counts.head().to_dict()}"
+        )
+
+    true_label_counts = (
+        metadata_df
+        .groupby("image_id")["true_label"]
+        .nunique()
+    )
+
+    inconsistent_labels = true_label_counts[
+        true_label_counts != 1
+    ]
+
+    if not inconsistent_labels.empty:
+        raise ValueError(
+            "True labels changed between rounds for one or more images. "
+            f"Examples: {inconsistent_labels.head().to_dict()}"
+        )
+
+    missing_files = []
+
+    for column_name in [
+        "raw_heatmap_path",
+        "overlay_path",
+    ]:
+        for file_path in metadata_df[column_name]:
+            path = Path(file_path)
+
+            if not path.is_file():
+                missing_files.append(str(path))
+
+                if len(missing_files) >= 10:
+                    break
+
+        if len(missing_files) >= 10:
+            break
+
+    if missing_files:
+        raise FileNotFoundError(
+            "One or more Grad-CAM output files referenced by the "
+            "metadata do not exist. Examples:\n"
+            + "\n".join(missing_files)
+        )
+
+    print(
+        "Round-wise Grad-CAM metadata validation passed:",
+        f"{len(expected_ids)} images × "
+        f"{len(expected_rounds)} rounds = "
+        f"{expected_rows} records.",
+    )
 
 def generate_roundwise_gradcam(
     config: Dict[str, Any],
@@ -230,6 +429,12 @@ def generate_roundwise_gradcam(
         ignore_index=True,
     )
 
+    validate_roundwise_metadata(
+        metadata_df=combined_df,
+        expected_image_ids=xai_ids,
+        checkpoint_rounds=checkpoint_rounds,
+    )
+
     combined_metadata_path = (
         metrics_dir
         / f"{config['experiment_id']}_roundwise_gradcam_metadata.csv"
@@ -247,6 +452,30 @@ def generate_roundwise_gradcam(
 
     return combined_df
 
+def add_comparison_fields(
+    row: Dict[str, Any],
+    suffix: str,
+    metrics: Dict[str, Any] | None,
+) -> None:
+    """Add a complete set of heatmap-comparison fields to one row."""
+    if metrics is not None:
+        missing_metrics = set(
+            HEATMAP_COMPARISON_FIELDS
+        ).difference(metrics.keys())
+
+        if missing_metrics:
+            raise ValueError(
+                "Heatmap comparison did not return all expected "
+                "metrics: "
+                + ", ".join(sorted(missing_metrics))
+            )
+
+    for metric_name in HEATMAP_COMPARISON_FIELDS:
+        row[f"{metric_name}_{suffix}"] = (
+            metrics[metric_name]
+            if metrics is not None
+            else None
+        )
 
 def build_similarity_results(
     metadata_df: pd.DataFrame,
@@ -356,10 +585,15 @@ def build_similarity_results(
                     threshold=threshold,
                 )
 
-                for metric_name, metric_value in final_metrics.items():
-                    row[
-                        f"{metric_name}_to_final"
-                    ] = metric_value
+                add_comparison_fields(
+                    row=row,
+                    suffix="to_final",
+                    metrics=final_metrics,
+                )
+
+                row["to_final_comparison_status"] = (
+                    "self_comparison"
+                )
 
             elif current_predicted_label == final_predicted_label:
                 final_metrics = compare_heatmap_files(
@@ -368,38 +602,35 @@ def build_similarity_results(
                     threshold=threshold,
                 )
 
-                for metric_name, metric_value in final_metrics.items():
-                    row[
-                        f"{metric_name}_to_final"
-                    ] = metric_value
+                add_comparison_fields(
+                    row=row,
+                    suffix="to_final",
+                    metrics=final_metrics,
+                )
+
+                row["to_final_comparison_status"] = "computed"
 
             else:
-                for metric_name in [
-                    "pearson_correlation",
-                    "cosine_similarity",
-                    "mean_absolute_error",
-                    "mean_squared_error",
-                    "intersection_over_union",
-                    "dice_score",
-                    "threshold",
-                ]:
-                    row[
-                        f"{metric_name}_to_final"
-                    ] = None
+                add_comparison_fields(
+                    row=row,
+                    suffix="to_final",
+                    metrics=None,
+                )
+
+                row["to_final_comparison_status"] = (
+                    "skipped_target_changed"
+                )
 
             if previous_row is None:
-                for metric_name in [
-                    "pearson_correlation",
-                    "cosine_similarity",
-                    "mean_absolute_error",
-                    "mean_squared_error",
-                    "intersection_over_union",
-                    "dice_score",
-                    "threshold",
-                ]:
-                    row[
-                        f"{metric_name}_to_previous"
-                    ] = None
+                add_comparison_fields(
+                    row=row,
+                    suffix="to_previous",
+                    metrics=None,
+                )
+
+                row["to_previous_comparison_status"] = (
+                    "not_applicable_first_round"
+                )
 
             elif (
                 current_predicted_label
@@ -411,24 +642,24 @@ def build_similarity_results(
                     threshold=threshold,
                 )
 
-                for metric_name, metric_value in previous_metrics.items():
-                    row[
-                        f"{metric_name}_to_previous"
-                    ] = metric_value
+                add_comparison_fields(
+                    row=row,
+                    suffix="to_previous",
+                    metrics=previous_metrics,
+                )
+
+                row["to_previous_comparison_status"] = "computed"
 
             else:
-                for metric_name in [
-                    "pearson_correlation",
-                    "cosine_similarity",
-                    "mean_absolute_error",
-                    "mean_squared_error",
-                    "intersection_over_union",
-                    "dice_score",
-                    "threshold",
-                ]:
-                    row[
-                        f"{metric_name}_to_previous"
-                    ] = None
+                add_comparison_fields(
+                    row=row,
+                    suffix="to_previous",
+                    metrics=None,
+                )
+
+                row["to_previous_comparison_status"] = (
+                    "skipped_target_changed"
+                )
 
             rows.append(row)
 
