@@ -47,6 +47,10 @@ final_round: 50
 xai_subset_size: 200
 xai_image_limit: 2
 
+image_source: "cache"
+image_cache_dir: "/workspace/thesis-fl-xai/data/processed/vindr_binary_224_png"
+image_cache_extension: ".png"
+
 # Heatmap comparison
 xai_method: "gradcam"
 heatmap_threshold: 0.50
