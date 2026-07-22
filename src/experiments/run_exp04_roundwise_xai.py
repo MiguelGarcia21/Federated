@@ -72,6 +72,12 @@ def validate_config(config: Dict[str, Any]) -> None:
         "seed",
         "val_fraction",
         "xai_subset_size",
+        "use_full_dataset",
+        "reuse_split_files",
+        "canonical_train_split_path",
+        "canonical_val_split_path",
+        "canonical_xai_ids_path",
+        "image_source",
         "source_experiment_id",
         "source_checkpoint_dir",
         "checkpoint_rounds",
@@ -99,6 +105,137 @@ def validate_config(config: Dict[str, Any]) -> None:
     if Path(experiment_id).name != experiment_id:
         raise ValueError(
             "experiment_id must be a plain identifier."
+        )
+    
+    if config["use_full_dataset"] is not True:
+        raise ValueError(
+            "Round-wise XAI must use the full canonical dataset."
+        )
+
+    if config["reuse_split_files"] is not True:
+        raise ValueError(
+            "Round-wise XAI must reuse the canonical split files."
+        )
+
+    canonical_paths = {
+        "canonical_train_split_path": Path(
+            config["canonical_train_split_path"]
+        ),
+        "canonical_val_split_path": Path(
+            config["canonical_val_split_path"]
+        ),
+        "canonical_xai_ids_path": Path(
+            config["canonical_xai_ids_path"]
+        ),
+    }
+
+    for key, path in canonical_paths.items():
+        if not path.is_file():
+            raise FileNotFoundError(
+                f"{key} does not exist: {path}"
+            )
+
+    xai_subset_size = int(
+        config["xai_subset_size"]
+    )
+
+    if xai_subset_size <= 0:
+        raise ValueError(
+            "xai_subset_size must be greater than zero."
+        )
+    
+    xai_image_limit = config.get(
+        "xai_image_limit"
+    )
+
+    if xai_image_limit is not None:
+        xai_image_limit = int(
+            xai_image_limit
+        )
+
+        if xai_image_limit <= 0:
+            raise ValueError(
+                "xai_image_limit must be greater than zero."
+            )
+
+        if xai_image_limit > xai_subset_size:
+            raise ValueError(
+                "xai_image_limit cannot be greater than "
+                "xai_subset_size."
+            )
+    
+    image_source = str(
+        config["image_source"]
+    ).strip().lower()
+
+    if image_source not in {
+        "dicom",
+        "cache",
+    }:
+        raise ValueError(
+            "image_source must be either "
+            "'dicom' or 'cache'."
+        )
+
+    if image_source == "cache":
+        configured_cache_dir = config.get(
+            "image_cache_dir"
+        )
+
+        if not configured_cache_dir:
+            raise KeyError(
+                "image_cache_dir is required when "
+                "image_source='cache'."
+            )
+
+        cache_dir = Path(
+            configured_cache_dir
+        )
+
+        if not cache_dir.is_dir():
+            raise FileNotFoundError(
+                "Configured image cache directory does not exist: "
+                f"{cache_dir}"
+            )
+
+        cache_extension = str(
+            config.get(
+                "image_cache_extension",
+                ".png",
+            )
+        ).strip().lower()
+
+        if not cache_extension.startswith("."):
+            raise ValueError(
+                "image_cache_extension must begin with a period, "
+                "for example '.png'."
+            )
+        
+    source_experiment_id = str(
+        config["source_experiment_id"]
+    ).strip()
+
+    if not source_experiment_id:
+        raise ValueError(
+            "source_experiment_id cannot be empty."
+        )
+
+    if Path(source_experiment_id).name != source_experiment_id:
+        raise ValueError(
+            "source_experiment_id must be a plain identifier."
+        )
+
+    source_split_type = str(
+        config["source_split_type"]
+    ).strip().lower()
+
+    if source_split_type not in {
+        "iid",
+        "non_iid_label_skew",
+    }:
+        raise ValueError(
+            "source_split_type must be either "
+            "'iid' or 'non_iid_label_skew'."
         )
 
     checkpoint_rounds = config["checkpoint_rounds"]
@@ -153,6 +290,15 @@ def validate_config(config: Dict[str, Any]) -> None:
         )
 
     print("Round-wise XAI config validation passed.")
+    print("Source experiment:", source_experiment_id)
+    print("Source split type:", source_split_type)
+    print("Image source:", image_source)
+    print("Expected XAI images:", xai_subset_size)
+    if xai_image_limit is not None:
+        print(
+            "Sanity XAI image limit:",
+            xai_image_limit,
+        )
 
 
 def get_checkpoint_path(
@@ -723,8 +869,66 @@ def main() -> None:
         interim_dir=dirs["interim_dir"],
     )
 
+    expected_xai_count = int(
+        config["xai_subset_size"]
+    )
+
+    if len(xai_ids) != expected_xai_count:
+        raise ValueError(
+            "Loaded XAI subset size does not match the configuration. "
+            f"Expected {expected_xai_count}, found {len(xai_ids)}."
+        )
+
+    normalized_xai_ids = [
+        str(image_id)
+        for image_id in xai_ids
+    ]
+
+    if len(normalized_xai_ids) != len(
+        set(normalized_xai_ids)
+    ):
+        raise ValueError(
+            "The canonical XAI subset contains duplicate image IDs."
+        )
+
+    validation_ids = set(
+        val_df["image_id"].astype(str)
+    )
+
+    missing_xai_ids = [
+        image_id
+        for image_id in normalized_xai_ids
+        if image_id not in validation_ids
+    ]
+
+    if missing_xai_ids:
+        raise ValueError(
+            f"{len(missing_xai_ids)} canonical XAI image IDs are "
+            "missing from the validation split. Examples: "
+            f"{missing_xai_ids[:5]}"
+        )
+
+    xai_image_limit = config.get(
+        "xai_image_limit"
+    )
+
+    if xai_image_limit is not None:
+        xai_ids = normalized_xai_ids[
+            :int(xai_image_limit)
+        ]
+
+        print(
+            "Using limited XAI subset for sanity run:",
+            len(xai_ids),
+        )
+
+    else:
+        xai_ids = normalized_xai_ids
+
     print("Validation samples:", len(val_df))
-    print("XAI images:", len(xai_ids))
+    print("Canonical XAI images:", len(normalized_xai_ids))
+    print("XAI images used in this run:", len(xai_ids))
+    print("Canonical XAI subset validation passed.")
 
     print("\nGenerate round-wise Grad-CAM:")
 
