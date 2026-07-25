@@ -1,4 +1,3 @@
-cat > configs/exp05_cross_model_gradcam_seed42.yaml <<'YAML'
 experiment_id: "exp05_cross_model_gradcam_seed42"
 
 project_root: "/workspace/thesis-fl-xai"
@@ -52,4 +51,3 @@ non_iid_source:
   checkpoint_round: 50
   checkpoint_path: "/workspace/thesis-fl-xai/outputs/checkpoints/exp03_fedavg_noniid_5clients_seed42/flower_fedavg_round_50.pt"
   metadata_path: "/workspace/thesis-fl-xai/outputs/metrics/exp04_roundwise_gradcam_noniid_seed42_non_iid_label_skew_round_50_gradcam_outputs.csv"
-YAML
