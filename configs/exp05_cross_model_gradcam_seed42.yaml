@@ -46,7 +46,7 @@ iid_source:
 
 non_iid_source:
   experiment_id: "exp03_fedavg_noniid_5clients_seed42"
-  condition: "non_iid"
+  condition: "non_iid_label_skew"
   split_type: "non_iid_label_skew"
   checkpoint_round: 50
   checkpoint_path: "/workspace/thesis-fl-xai/outputs/checkpoints/exp03_fedavg_noniid_5clients_seed42/flower_fedavg_round_50.pt"
