@@ -1,0 +1,54 @@
+Seed-42 official artifact snapshot
+
+Created UTC: 2026-07-26T10:56:57.958605+00:00
+Project root: /workspace/thesis-fl-xai
+Git branch: main
+Git commit: 6a54cb284786b0104434875c227622c86f389b95
+Manifest rows: 26
+
+Validated row counts:
+- centralized_metric_rows: 10
+- iid_metric_rows: 50
+- non_iid_metric_rows: 50
+- iid_roundwise_xai_rows: 2200
+- non_iid_roundwise_xai_rows: 2200
+- cross_model_metadata_rows: 600
+- cross_model_similarity_rows: 600
+
+Artifact categories:
+- canonical_data: 3
+- checkpoint: 3
+- figure: 7
+- metrics: 13
+
+Git status at snapshot time:
+?? outputs/checkpoints/exp01_centralized_vindr_binary_seed42/centralized_resnet18_debug_best.pt
+?? outputs/checkpoints/exp02_fedavg_iid_5clients_seed42/
+?? outputs/checkpoints/exp03_fedavg_noniid_5clients_5round_sanity_seed42/
+?? outputs/checkpoints/exp03_fedavg_noniid_5clients_seed42/
+?? outputs/checkpoints/exp04_roundwise_gradcam_iid_sanity_seed42/
+?? outputs/checkpoints/exp04_roundwise_gradcam_iid_seed42/
+?? outputs/checkpoints/exp04_roundwise_gradcam_noniid_sanity_seed42/
+?? outputs/checkpoints/exp04_roundwise_gradcam_noniid_seed42/
+?? outputs/checkpoints/exp05_cross_model_gradcam_seed42/
+?? outputs/figures/
+?? outputs/heatmaps/exp05_cross_model_gradcam_seed42/
+?? outputs/metrics/exp01_exp02_exp03_predictive_performance_summary_seed42.csv
+?? outputs/metrics/exp02_exp03_exp04_performance_xai_aligned_seed42.csv
+?? outputs/metrics/exp04_roundwise_gradcam_stability_summary_seed42.csv
+?? outputs/metrics/exp05_cross_model_gradcam_seed42_centralized_gradcam_outputs.csv
+?? outputs/metrics/exp05_cross_model_gradcam_seed42_cross_model_gradcam_metadata.csv
+?? outputs/metrics/exp05_cross_model_gradcam_seed42_cross_model_xai_similarity.csv
+?? outputs/metrics/exp05_cross_model_gradcam_seed42_qualitative_candidates.csv
+?? outputs/metrics/exp05_cross_model_gradcam_seed42_qualitative_figure_selection.csv
+?? outputs/metrics/exp05_cross_model_gradcam_seed42_quantitative_summary.csv
+?? outputs/metrics/seed42_official_artifact_manifest.csv
+
+Important:
+This manifest identifies the official seed-42 artifacts. Future seed runs must use different experiment IDs and must not overwrite any path listed in the manifest.
+
+Expanded checkpoint freeze:
+- Updated UTC: 2026-07-26T10:59:55.980838+00:00
+- Included all IID and non-IID checkpoints for rounds 0, 5, 10, ..., 50.
+- Federated round-wise checkpoints frozen: 22
+- Total manifest rows after expansion: 49
