@@ -32,7 +32,7 @@ iid_source:
   split_type: iid
   checkpoint_round: 50
   checkpoint_path: /workspace/thesis-fl-xai/outputs/checkpoints/exp02_fedavg_iid_5clients_seed7/flower_fedavg_round_50.pt
-  metadata_path: /workspace/thesis-fl-xai/outputs/metrics/exp04_roundwise_gradcam_iid_seed42_iid_round_50_gradcam_outputs.csv
+  metadata_path: /workspace/thesis-fl-xai/outputs/metrics/exp04_roundwise_gradcam_iid_seed7_iid_round_50_gradcam_outputs.csv
   roundwise_metadata_path: /workspace/thesis-fl-xai/outputs/metrics/exp04_roundwise_gradcam_iid_seed7_roundwise_gradcam_metadata.csv
 non_iid_source:
   experiment_id: exp03_fedavg_noniid_5clients_seed7
@@ -40,5 +40,5 @@ non_iid_source:
   split_type: non_iid_label_skew
   checkpoint_round: 50
   checkpoint_path: /workspace/thesis-fl-xai/outputs/checkpoints/exp03_fedavg_noniid_5clients_seed7/flower_fedavg_round_50.pt
-  metadata_path: /workspace/thesis-fl-xai/outputs/metrics/exp04_roundwise_gradcam_noniid_seed42_non_iid_label_skew_round_50_gradcam_outputs.csv
+  metadata_path: /workspace/thesis-fl-xai/outputs/metrics/exp04_roundwise_gradcam_noniid_seed7_non_iid_label_skew_round_50_gradcam_outputs.csv
   roundwise_metadata_path: /workspace/thesis-fl-xai/outputs/metrics/exp04_roundwise_gradcam_noniid_seed7_roundwise_gradcam_metadata.csv
