@@ -1,0 +1,44 @@
+experiment_id: exp05_cross_model_gradcam_seed7
+project_root: /workspace/thesis-fl-xai
+output_dir: /workspace/thesis-fl-xai/outputs
+train_csv: /workspace/data/raw/vindr/train.csv
+train_image_dir: /workspace/data/raw/vindr/train
+dataset: vindr
+task: binary_abnormal
+model_name: resnet18
+num_classes: 2
+image_size: 224
+seed: 7
+use_full_dataset: true
+reuse_split_files: true
+val_fraction: 0.2
+xai_subset_size: 200
+canonical_train_split_path: /workspace/thesis-fl-xai/data/interim/exp01_centralized_vindr_binary_seed42_train_split.csv
+canonical_val_split_path: /workspace/thesis-fl-xai/data/interim/exp01_centralized_vindr_binary_seed42_val_split.csv
+canonical_xai_ids_path: /workspace/thesis-fl-xai/data/interim/exp01_centralized_vindr_binary_seed42_xai_image_ids.csv
+image_source: cache
+image_cache_dir: /workspace/thesis-fl-xai/data/processed/vindr_binary_224_png
+image_cache_extension: .png
+heatmap_threshold: 0.5
+xai_method: gradcam
+centralized_source:
+  experiment_id: exp01_centralized_vindr_binary_seed7
+  condition: centralized
+  split_type: centralized
+  checkpoint_path: /workspace/thesis-fl-xai/outputs/checkpoints/exp01_centralized_vindr_binary_seed7/centralized_resnet18_best.pt
+iid_source:
+  experiment_id: exp02_fedavg_iid_5clients_seed7
+  condition: iid
+  split_type: iid
+  checkpoint_round: 50
+  checkpoint_path: /workspace/thesis-fl-xai/outputs/checkpoints/exp02_fedavg_iid_5clients_seed7/flower_fedavg_round_50.pt
+  metadata_path: /workspace/thesis-fl-xai/outputs/metrics/exp04_roundwise_gradcam_iid_seed42_iid_round_50_gradcam_outputs.csv
+  roundwise_metadata_path: /workspace/thesis-fl-xai/outputs/metrics/exp04_roundwise_gradcam_iid_seed7_roundwise_gradcam_metadata.csv
+non_iid_source:
+  experiment_id: exp03_fedavg_noniid_5clients_seed7
+  condition: non_iid_label_skew
+  split_type: non_iid_label_skew
+  checkpoint_round: 50
+  checkpoint_path: /workspace/thesis-fl-xai/outputs/checkpoints/exp03_fedavg_noniid_5clients_seed7/flower_fedavg_round_50.pt
+  metadata_path: /workspace/thesis-fl-xai/outputs/metrics/exp04_roundwise_gradcam_noniid_seed42_non_iid_label_skew_round_50_gradcam_outputs.csv
+  roundwise_metadata_path: /workspace/thesis-fl-xai/outputs/metrics/exp04_roundwise_gradcam_noniid_seed7_roundwise_gradcam_metadata.csv
