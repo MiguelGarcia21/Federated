@@ -9,8 +9,8 @@ FIGURE_01_SOURCE,source_table,fig01_source_final_f1_balanced_accuracy.csv,True,1
 FIGURE_02,figure_png,fig02_final_accuracy_auc_three_seeds.png,True,302751
 FIGURE_02,figure_pdf,fig02_final_accuracy_auc_three_seeds.pdf,True,19790
 FIGURE_02_SOURCE,source_table,fig02_source_final_accuracy_auc.csv,True,1642
-FIGURE_03,figure_png,fig03_best_round_and_final_f1_gap.png,True,191760
-FIGURE_03,figure_pdf,fig03_best_round_and_final_f1_gap.pdf,True,19901
-FIGURE_03_SOURCE,source_table,fig03_source_best_round_and_final_f1.csv,True,2864
-SUMMARY_01,summary,summary01_predictive_performance_results.md,True,3167
-CATALOG_01,catalog,predictive_artifact_catalog.md,True,3778
+FIGURE_03,figure_png,fig03_best_round_and_final_f1_gap.png,True,179791
+FIGURE_03,figure_pdf,fig03_best_round_and_final_f1_gap.pdf,True,20446
+FIGURE_03_SOURCE,source_table,fig03_source_best_round_and_final_f1.csv,True,2960
+SUMMARY_01,summary,summary01_predictive_performance_results.md,True,3201
+CATALOG_01,catalog,predictive_artifact_catalog.md,True,3960

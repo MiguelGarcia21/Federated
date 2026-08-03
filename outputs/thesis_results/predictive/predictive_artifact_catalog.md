@@ -50,10 +50,10 @@
 
 **Title:** Timing and magnitude of best-versus-final federated performance  
 **Files:** `fig03_best_round_and_final_f1_gap.png` and `.pdf`  
-**Panels:** Best-F1 communication round; best-F1 minus Round-50 F1.  
-**Primary conclusion:** The final round was not consistently the best validation-F1 checkpoint.  
+**Panels:** Communication round of peak validation F1; peak-F1 improvement over Round 50 in percentage points.  
+**Primary conclusion:** The final round was not consistently the best validation-F1 checkpoint, although the performance difference was modest.  
 **Suggested placement:** Separate from general performance-comparison figures because it supports a model-selection conclusion.  
-**Caption:** Communication round at which validation F1 was highest and the corresponding difference between best-round and final Round-50 F1. Positive differences indicate that the best validation-F1 checkpoint outperformed the final model.
+**Caption:** Communication round at which validation F1 was highest and the corresponding improvement over final Round-50 F1, expressed in percentage points. Lines connect IID and non-IID results obtained with the same seed. The dashed reference lines indicate Round 50 in panel (a) and no best-versus-final difference in panel (b).
 
 ## SUMMARY_01
 

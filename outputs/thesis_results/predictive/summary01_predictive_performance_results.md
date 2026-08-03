@@ -8,7 +8,7 @@ Figure 1 compares the selected centralized checkpoints with the final IID and no
 
 Figure 2 provides complementary evidence using accuracy and ROC AUC. Mean accuracy was 0.916 for the selected centralized checkpoints, 0.920 for IID Round 50, and 0.915 for non-IID Round 50. Mean ROC AUC was 0.967, 0.968, and 0.967, respectively. These results show that the three training conditions remained broadly comparable not only in threshold-dependent metrics but also in ranking performance.
 
-Figure 3 examines model-selection timing within the federated experiments. The best validation-F1 round occurred at a mean round of 28.0 for IID training and 27.0 for non-IID training. The mean difference between the best F1 and Round-50 F1 was 0.0136 for IID and 0.0127 for non-IID. Thus, the final communication round was not consistently the strongest validation-F1 model, supporting the decision to report both best-round and final-round results.
+Figure 3 examines model-selection timing within the federated experiments. The best validation-F1 round occurred at a mean round of 28.0 for IID training and 27.0 for non-IID training. The mean improvement of the best checkpoint over Round 50 was 1.36 percentage points for IID and 1.27 percentage points for non-IID. Thus, the final communication round was not consistently the strongest validation-F1 model, supporting the decision to report both best-round and final-round results.
 
 For the centralized condition, the selected epochs were seed 42: epoch 2, seed 7: epoch 10, seed 123: epoch 9. The variation in selected epoch shows that checkpoint selection was also relevant for centralized training even though its final predictive values were stable across seeds.
 
