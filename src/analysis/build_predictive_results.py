@@ -554,6 +554,11 @@ def plot_best_round_and_gap(
     png_path: Path,
     pdf_path: Path,
 ) -> None:
+    """Plot peak-F1 timing and its improvement over the Round-50 checkpoint.
+
+    Lines connect the IID and non-IID observations obtained with the same seed.
+    The right panel expresses the F1 difference in percentage points.
+    """
     best = federated[federated["selection_rule"] == "Best validation F1"].copy()
     final = federated[federated["selection_rule"] == "Final Round 50"].copy()
 
@@ -562,12 +567,15 @@ def plot_best_round_and_gap(
     )
     best_f1 = best.pivot(index="seed", columns="condition", values="f1")
     final_f1 = final.pivot(index="seed", columns="condition", values="f1")
-    gap = best_f1 - final_f1
+
+    # Convert the raw F1 difference into percentage points for readability.
+    gap_percentage_points = (best_f1 - final_f1) * 100.0
 
     fig, axes = plt.subplots(1, 2, figsize=(12.5, 5.4))
     x = np.arange(2, dtype=float)
     conditions = ["IID", "Non-IID"]
 
+    # Panel (a): communication round with the highest validation F1.
     for seed in SEEDS:
         axes[0].plot(
             x,
@@ -577,22 +585,44 @@ def plot_best_round_and_gap(
             alpha=0.7,
             label=f"Seed {seed}",
         )
+
+    best_round_mean = best_round[conditions].mean(axis=0)
+    best_round_std = best_round[conditions].std(axis=0, ddof=1)
+    axes[0].errorbar(
+        x,
+        best_round_mean.to_numpy(dtype=float),
+        yerr=best_round_std.to_numpy(dtype=float),
+        fmt="D",
+        linewidth=2.0,
+        capsize=5,
+        markersize=6,
+        color="tab:red",
+        label="Mean ± SD",
+    )
+    axes[0].axhline(
+        50,
+        linestyle="--",
+        linewidth=1.0,
+        color="0.45",
+    )
     axes[0].set_xticks(x, conditions)
-    axes[0].set_ylabel("Best-F1 communication round")
-    axes[0].set_title("When the best validation F1 occurred")
+    axes[0].set_ylabel("Communication round")
+    axes[0].set_title("(a) Communication round of peak validation F1")
     axes[0].set_ylim(0, 52)
     axes[0].grid(axis="y", alpha=0.25)
 
+    # Panel (b): peak-F1 improvement over the final Round-50 checkpoint.
     for seed in SEEDS:
         axes[1].plot(
             x,
-            gap.loc[seed, conditions].to_numpy(dtype=float),
+            gap_percentage_points.loc[seed, conditions].to_numpy(dtype=float),
             marker="o",
             linewidth=1.2,
             alpha=0.7,
         )
-    gap_mean = gap[conditions].mean(axis=0)
-    gap_std = gap[conditions].std(axis=0, ddof=1)
+
+    gap_mean = gap_percentage_points[conditions].mean(axis=0)
+    gap_std = gap_percentage_points[conditions].std(axis=0, ddof=1)
     axes[1].errorbar(
         x,
         gap_mean.to_numpy(dtype=float),
@@ -601,29 +631,36 @@ def plot_best_round_and_gap(
         linewidth=2.0,
         capsize=5,
         markersize=6,
+        color="tab:red",
         label="Mean ± SD",
     )
-    axes[1].axhline(0, linewidth=1)
+    axes[1].axhline(
+        0,
+        linestyle="--",
+        linewidth=1.0,
+        color="0.45",
+    )
     axes[1].set_xticks(x, conditions)
-    axes[1].set_ylabel("Best F1 − Round-50 F1")
-    axes[1].set_title("Validation-F1 change from best to final round")
+    axes[1].set_ylabel("Best F1 − Round-50 F1 (percentage points)")
+    axes[1].set_title("(b) Improvement of peak F1 over Round 50")
     axes[1].grid(axis="y", alpha=0.25)
 
+    maximum_gap = float(np.nanmax(gap_percentage_points[conditions].to_numpy()))
+    axes[1].set_ylim(-0.05, max(2.0, maximum_gap + 0.30))
+
     handles, labels = axes[0].get_legend_handles_labels()
-    mean_handles, mean_labels = axes[1].get_legend_handles_labels()
     fig.legend(
-        handles + mean_handles,
-        labels + mean_labels,
+        handles,
+        labels,
         loc="lower center",
         bbox_to_anchor=(0.5, 0.01),
         ncol=4,
         frameon=False,
     )
-    fig.subplots_adjust(bottom=0.22, wspace=0.28)
+    fig.subplots_adjust(bottom=0.22, wspace=0.34)
     fig.savefig(png_path, dpi=300, bbox_inches="tight")
     fig.savefig(pdf_path, bbox_inches="tight")
     plt.close(fig)
-
 
 def fmt(value: float, digits: int = 3) -> str:
     return f"{value:.{digits}f}"
@@ -670,11 +707,11 @@ def write_results_summary(
     mean_best_round_non = merged.loc[
         merged["condition"] == "Non-IID", "selected_epoch_or_round_best"
     ].mean()
-    mean_gap_iid = (
+    mean_gap_iid_percentage_points = 100.0 * (
         merged.loc[merged["condition"] == "IID", "f1_best"]
         - merged.loc[merged["condition"] == "IID", "f1_final"]
     ).mean()
-    mean_gap_non = (
+    mean_gap_non_percentage_points = 100.0 * (
         merged.loc[merged["condition"] == "Non-IID", "f1_best"]
         - merged.loc[merged["condition"] == "Non-IID", "f1_final"]
     ).mean()
@@ -694,7 +731,7 @@ Figure 1 compares the selected centralized checkpoints with the final IID and no
 
 Figure 2 provides complementary evidence using accuracy and ROC AUC. Mean accuracy was {fmt(acc_c)} for the selected centralized checkpoints, {fmt(acc_iid)} for IID Round 50, and {fmt(acc_non)} for non-IID Round 50. Mean ROC AUC was {fmt(auc_c)}, {fmt(auc_iid)}, and {fmt(auc_non)}, respectively. These results show that the three training conditions remained broadly comparable not only in threshold-dependent metrics but also in ranking performance.
 
-Figure 3 examines model-selection timing within the federated experiments. The best validation-F1 round occurred at a mean round of {mean_best_round_iid:.1f} for IID training and {mean_best_round_non:.1f} for non-IID training. The mean difference between the best F1 and Round-50 F1 was {mean_gap_iid:.4f} for IID and {mean_gap_non:.4f} for non-IID. Thus, the final communication round was not consistently the strongest validation-F1 model, supporting the decision to report both best-round and final-round results.
+Figure 3 examines model-selection timing within the federated experiments. The best validation-F1 round occurred at a mean round of {mean_best_round_iid:.1f} for IID training and {mean_best_round_non:.1f} for non-IID training. The mean improvement of the best checkpoint over Round 50 was {mean_gap_iid_percentage_points:.2f} percentage points for IID and {mean_gap_non_percentage_points:.2f} percentage points for non-IID. Thus, the final communication round was not consistently the strongest validation-F1 model, supporting the decision to report both best-round and final-round results.
 
 For the centralized condition, the selected epochs were {selected_epochs}. The variation in selected epoch shows that checkpoint selection was also relevant for centralized training even though its final predictive values were stable across seeds.
 
@@ -767,10 +804,10 @@ def write_artifact_catalog(output_path: Path) -> None:
 
 **Title:** Timing and magnitude of best-versus-final federated performance  
 **Files:** `fig03_best_round_and_final_f1_gap.png` and `.pdf`  
-**Panels:** Best-F1 communication round; best-F1 minus Round-50 F1.  
-**Primary conclusion:** The final round was not consistently the best validation-F1 checkpoint.  
+**Panels:** Communication round of peak validation F1; peak-F1 improvement over Round 50 in percentage points.  
+**Primary conclusion:** The final round was not consistently the best validation-F1 checkpoint, although the performance difference was modest.  
 **Suggested placement:** Separate from general performance-comparison figures because it supports a model-selection conclusion.  
-**Caption:** Communication round at which validation F1 was highest and the corresponding difference between best-round and final Round-50 F1. Positive differences indicate that the best validation-F1 checkpoint outperformed the final model.
+**Caption:** Communication round at which validation F1 was highest and the corresponding improvement over final Round-50 F1, expressed in percentage points. Lines connect IID and non-IID results obtained with the same seed. The dashed reference lines indicate Round 50 in panel (a) and no best-versus-final difference in panel (b).
 
 ## SUMMARY_01
 
@@ -890,6 +927,9 @@ def main() -> int:
     )
     fig03_source["f1_gap_best_minus_final"] = (
         fig03_source["f1_best"] - fig03_source["f1_final"]
+    )
+    fig03_source["f1_gap_best_minus_final_percentage_points"] = (
+        fig03_source["f1_gap_best_minus_final"] * 100.0
     )
     save_table(
         fig03_source,
