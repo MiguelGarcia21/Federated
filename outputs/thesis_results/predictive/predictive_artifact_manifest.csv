@@ -1,0 +1,16 @@
+artifact_id,artifact_type,filename,exists,size_bytes
+TABLE_01,table,table01_centralized_selected_checkpoint_by_seed.csv,True,812
+TABLE_02,table,table02_federated_best_and_final_by_seed.csv,True,2638
+TABLE_03,table,table03_predictive_comparison_by_seed.csv,True,2231
+TABLE_04,table,table04_predictive_comparison_three_seed_summary.csv,True,1007
+FIGURE_01,figure_png,fig01_final_f1_balanced_accuracy_three_seeds.png,True,297959
+FIGURE_01,figure_pdf,fig01_final_f1_balanced_accuracy_three_seeds.pdf,True,19622
+FIGURE_01_SOURCE,source_table,fig01_source_final_f1_balanced_accuracy.csv,True,1650
+FIGURE_02,figure_png,fig02_final_accuracy_auc_three_seeds.png,True,302751
+FIGURE_02,figure_pdf,fig02_final_accuracy_auc_three_seeds.pdf,True,19790
+FIGURE_02_SOURCE,source_table,fig02_source_final_accuracy_auc.csv,True,1642
+FIGURE_03,figure_png,fig03_best_round_and_final_f1_gap.png,True,191760
+FIGURE_03,figure_pdf,fig03_best_round_and_final_f1_gap.pdf,True,19901
+FIGURE_03_SOURCE,source_table,fig03_source_best_round_and_final_f1.csv,True,2864
+SUMMARY_01,summary,summary01_predictive_performance_results.md,True,3167
+CATALOG_01,catalog,predictive_artifact_catalog.md,True,3778

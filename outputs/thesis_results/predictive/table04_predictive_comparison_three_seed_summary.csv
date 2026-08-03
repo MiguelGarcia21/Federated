@@ -1,0 +1,16 @@
+condition,metric,mean,standard_deviation,minimum,maximum,n_seeds
+Centralized selected,accuracy,0.915778,0.002502,0.913333,0.918333,3
+Centralized selected,f1,0.859732,0.003617,0.855556,0.861824,3
+Centralized selected,auc,0.967270,0.003473,0.964101,0.970983,3
+Centralized selected,balanced_accuracy,0.905573,0.004233,0.902401,0.910380,3
+Centralized selected,loss,0.252544,0.018245,0.234629,0.271102,3
+IID Round 50,accuracy,0.920111,0.004811,0.917333,0.925667,3
+IID Round 50,f1,0.867220,0.008868,0.860045,0.877135,3
+IID Round 50,auc,0.967823,0.004135,0.963359,0.971523,3
+IID Round 50,balanced_accuracy,0.911525,0.008631,0.902565,0.919784,3
+IID Round 50,loss,0.356567,0.037290,0.325536,0.397935,3
+Non-IID Round 50,accuracy,0.914889,0.007183,0.909333,0.923000,3
+Non-IID Round 50,f1,0.859952,0.009921,0.852973,0.871309,3
+Non-IID Round 50,auc,0.966623,0.000743,0.966088,0.967472,3
+Non-IID Round 50,balanced_accuracy,0.907943,0.004623,0.904692,0.913235,3
+Non-IID Round 50,loss,0.351877,0.016157,0.333704,0.364616,3

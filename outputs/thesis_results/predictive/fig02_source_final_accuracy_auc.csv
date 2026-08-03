@@ -1,0 +1,10 @@
+seed,display_condition,accuracy,auc,experiment_id,source_csv
+42,Centralized selected,0.913333,0.964101,exp01_centralized_vindr_binary_seed42,/workspace/thesis-fl-xai/outputs/metrics/exp01_centralized_vindr_binary_seed42_centralized_metrics.csv
+7,Centralized selected,0.918333,0.966727,exp01_centralized_vindr_binary_seed7,/workspace/thesis-fl-xai/outputs/metrics/exp01_centralized_vindr_binary_seed7_centralized_metrics.csv
+123,Centralized selected,0.915667,0.970983,exp01_centralized_vindr_binary_seed123,/workspace/thesis-fl-xai/outputs/metrics/exp01_centralized_vindr_binary_seed123_centralized_metrics.csv
+42,IID Round 50,0.917333,0.963359,exp02_fedavg_iid_5clients_seed42,/workspace/thesis-fl-xai/outputs/metrics/exp02_fedavg_iid_5clients_seed42_flower_fedavg_metrics.csv
+7,IID Round 50,0.925667,0.971523,exp02_fedavg_iid_5clients_seed7,/workspace/thesis-fl-xai/outputs/metrics/exp02_fedavg_iid_5clients_seed7_flower_fedavg_metrics.csv
+123,IID Round 50,0.917333,0.968587,exp02_fedavg_iid_5clients_seed123,/workspace/thesis-fl-xai/outputs/metrics/exp02_fedavg_iid_5clients_seed123_flower_fedavg_metrics.csv
+42,Non-IID Round 50,0.909333,0.966310,exp03_fedavg_noniid_5clients_seed42,/workspace/thesis-fl-xai/outputs/metrics/exp03_fedavg_noniid_5clients_seed42_flower_fedavg_metrics.csv
+7,Non-IID Round 50,0.923000,0.966088,exp03_fedavg_noniid_5clients_seed7,/workspace/thesis-fl-xai/outputs/metrics/exp03_fedavg_noniid_5clients_seed7_flower_fedavg_metrics.csv
+123,Non-IID Round 50,0.912333,0.967472,exp03_fedavg_noniid_5clients_seed123,/workspace/thesis-fl-xai/outputs/metrics/exp03_fedavg_noniid_5clients_seed123_flower_fedavg_metrics.csv
