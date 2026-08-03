@@ -55,6 +55,24 @@
 **Suggested placement:** Separate from general performance-comparison figures because it supports a model-selection conclusion.  
 **Caption:** Communication round at which validation F1 was highest and the corresponding improvement over final Round-50 F1, expressed in percentage points. Lines connect IID and non-IID results obtained with the same seed. The dashed reference lines indicate Round 50 in panel (a) and no best-versus-final difference in panel (b).
 
+## FIGURE_04
+
+**Title:** IID federated predictive convergence across 50 communication rounds  
+**Files:** `fig04_iid_predictive_convergence.png` and `.pdf`  
+**Panels:** Validation F1 over rounds; validation ROC AUC over rounds.  
+**Primary conclusion:** IID FedAvg improved rapidly and entered a strong performance region before the final communication round, while smaller seed-specific fluctuations remained.  
+**Suggested placement:** After Figure 3, with separate Results discussion for threshold-dependent and ranking-oriented convergence.  
+**Visual structure:** Three thin seed trajectories, one thicker three-seed mean, and a sample-standard-deviation band in each panel.
+
+## FIGURE_05
+
+**Title:** Non-IID federated predictive convergence across 50 communication rounds  
+**Files:** `fig05_noniid_predictive_convergence.png` and `.pdf`  
+**Panels:** Validation F1 over rounds; validation ROC AUC over rounds.  
+**Primary conclusion:** Label-skew non-IID FedAvg also converged to strong predictive performance without a persistent late-round collapse.  
+**Suggested placement:** After Figure 4 so that the non-IID trajectory receives independent discussion space rather than being compressed into one crowded comparison dashboard.  
+**Visual structure:** Three thin seed trajectories, one thicker three-seed mean, and a sample-standard-deviation band in each panel.
+
 ## SUMMARY_01
 
 **Title:** Predictive performance across three seeds  

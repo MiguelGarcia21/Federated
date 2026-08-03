@@ -12,5 +12,11 @@ FIGURE_02_SOURCE,source_table,fig02_source_final_accuracy_auc.csv,True,1642
 FIGURE_03,figure_png,fig03_best_round_and_final_f1_gap.png,True,179791
 FIGURE_03,figure_pdf,fig03_best_round_and_final_f1_gap.pdf,True,20446
 FIGURE_03_SOURCE,source_table,fig03_source_best_round_and_final_f1.csv,True,2960
+FIGURE_04,figure_png,fig04_iid_predictive_convergence.png,True,351072
+FIGURE_04,figure_pdf,fig04_iid_predictive_convergence.pdf,True,22658
+FIGURE_04_SOURCE,source_table,fig04_source_iid_predictive_convergence.csv,True,28258
+FIGURE_05,figure_png,fig05_noniid_predictive_convergence.png,True,376414
+FIGURE_05,figure_pdf,fig05_noniid_predictive_convergence.pdf,True,22805
+FIGURE_05_SOURCE,source_table,fig05_source_noniid_predictive_convergence.csv,True,29758
 SUMMARY_01,summary,summary01_predictive_performance_results.md,True,3201
-CATALOG_01,catalog,predictive_artifact_catalog.md,True,3960
+CATALOG_01,catalog,predictive_artifact_catalog.md,True,5335
