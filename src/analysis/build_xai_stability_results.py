@@ -1,4 +1,5 @@
 #!/usr/bin/env python3
+
 from __future__ import annotations
 
 import argparse
@@ -48,24 +49,28 @@ ALIASES: dict[str, tuple[str, ...]] = {
         "status_to_final",
     ),
     "pearson_previous": (
+        "pearson_correlation_to_previous",
         "pearson_to_previous",
         "to_previous_pearson",
         "similarity_to_previous_pearson",
         "pearson_previous",
     ),
     "dice_previous": (
+        "dice_score_to_previous",
         "dice_to_previous",
         "to_previous_dice",
         "similarity_to_previous_dice",
         "dice_previous",
     ),
     "pearson_final": (
+        "pearson_correlation_to_final",
         "pearson_to_final",
         "to_final_pearson",
         "similarity_to_final_pearson",
         "pearson_final",
     ),
     "dice_final": (
+        "dice_score_to_final",
         "dice_to_final",
         "to_final_dice",
         "similarity_to_final_dice",
