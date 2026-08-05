@@ -9,6 +9,8 @@ from pathlib import Path
 from typing import Sequence
 
 import matplotlib.pyplot as plt
+from matplotlib.lines import Line2D
+from matplotlib.patches import Patch
 import numpy as np
 import pandas as pd
 
@@ -583,14 +585,12 @@ def plot_early_adjacent_stability(
     transition_labels = ["Round 0→5", "Round 5→10"]
     offsets = {"IID": -0.10, "Non-IID": 0.10}
     seed_markers = {42: "o", 7: "s", 123: "^"}
-
-    shared_handles: list[object] = []
-    shared_labels: list[str] = []
+    condition_colors: dict[str, str] = {}
 
     for panel_index, (metric, ylabel) in enumerate(metrics):
         ax = axes[panel_index]
 
-        for condition_index, condition in enumerate(CONDITIONS):
+        for condition in CONDITIONS:
             condition_data = early[early["condition"] == condition]
             grouped = (
                 condition_data.groupby("round", observed=True)[metric]
@@ -598,12 +598,14 @@ def plot_early_adjacent_stability(
                 .reindex(EARLY_ADJACENT_ROUNDS)
             )
             positions = x + offsets[condition]
-            mean_line, condition_color = get_condition_color(
+            _, condition_color = get_condition_color(
                 ax,
                 positions,
                 grouped["mean"].to_numpy(dtype=float),
                 condition,
             )
+            condition_colors.setdefault(condition, condition_color)
+
             ax.errorbar(
                 positions,
                 grouped["mean"].to_numpy(dtype=float),
@@ -613,50 +615,86 @@ def plot_early_adjacent_stability(
                 color=condition_color,
             )
 
-            if panel_index == 0:
-                shared_handles.append(mean_line)
-                shared_labels.append(condition)
-
             for seed in SEEDS:
                 seed_data = (
                     condition_data[condition_data["seed"] == seed]
                     .set_index("round")
                     .reindex(EARLY_ADJACENT_ROUNDS)
                 )
-                scatter = ax.scatter(
+                ax.scatter(
                     positions,
                     seed_data[metric].to_numpy(dtype=float),
                     marker=seed_markers[seed],
                     color=condition_color,
                     alpha=0.70,
                     zorder=3,
-                    label=f"Seed {seed}" if condition_index == 0 else None,
                 )
-                if panel_index == 0 and condition_index == 0:
-                    shared_handles.append(scatter)
-                    shared_labels.append(f"Seed {seed}")
 
         panel_letter = "a" if panel_index == 0 else "b"
         ax.set_xticks(x, transition_labels)
         ax.set_ylabel(ylabel)
         ax.set_title(
-            f"({panel_letter}) Early adjacent-checkpoint {ylabel.lower()}"
+            f"({panel_letter}) Early adjacent-checkpoint {ylabel}"
         )
         ax.grid(axis="y", alpha=0.25)
 
+        if metric == "pearson_previous_mean":
+            ax.axhline(
+                0,
+                linestyle="--",
+                linewidth=1.0,
+                color="0.45",
+                zorder=0,
+            )
+
+    fig.suptitle(
+        "Early adjacent-checkpoint Grad-CAM stability",
+        y=0.98,
+    )
+
+    condition_handles = [
+        Line2D(
+            [],
+            [],
+            color=condition_colors[condition],
+            marker="D",
+            linewidth=2.2,
+            label=condition,
+        )
+        for condition in CONDITIONS
+    ]
+    seed_handles = [
+        Line2D(
+            [],
+            [],
+            color="0.35",
+            marker=seed_markers[seed],
+            linestyle="none",
+            markersize=7,
+            label=f"Seed {seed}",
+        )
+        for seed in SEEDS
+    ]
+    summary_handle = Line2D(
+        [],
+        [],
+        color="0.25",
+        marker="D",
+        linewidth=1.3,
+        label="Condition mean ± SD",
+    )
+
     fig.legend(
-        shared_handles,
-        shared_labels,
+        condition_handles + seed_handles + [summary_handle],
         loc="lower center",
         bbox_to_anchor=(0.5, 0.01),
-        ncol=5,
+        ncol=6,
         frameon=False,
     )
-    fig.subplots_adjust(bottom=0.22, wspace=0.30)
+    fig.subplots_adjust(top=0.84, bottom=0.23, wspace=0.30)
     fig.savefig(png_path, dpi=300, bbox_inches="tight")
     fig.savefig(pdf_path, bbox_inches="tight")
     plt.close(fig)
-
 
 def plot_similarity_to_final(
     seed_round: pd.DataFrame,
@@ -673,14 +711,12 @@ def plot_similarity_to_final(
         ("dice_final_mean", "Dice score"),
     )
     seed_markers = {42: "o", 7: "s", 123: "^"}
-
-    shared_handles: list[object] = []
-    shared_labels: list[str] = []
+    condition_colors: dict[str, str] = {}
 
     for panel_index, (metric, ylabel) in enumerate(metrics):
         ax = axes[panel_index]
 
-        for condition_index, condition in enumerate(CONDITIONS):
+        for condition in CONDITIONS:
             condition_data = common[common["condition"] == condition]
             pivot = (
                 condition_data.pivot(
@@ -692,13 +728,15 @@ def plot_similarity_to_final(
             stds = pivot.std(axis=1, ddof=1)
             rounds = np.asarray(COMMON_ROUNDS, dtype=float)
 
-            mean_line, condition_color = get_condition_color(
+            _, condition_color = get_condition_color(
                 ax,
                 rounds,
                 means.to_numpy(dtype=float),
                 f"{condition} mean",
             )
-            band = ax.fill_between(
+            condition_colors.setdefault(condition, condition_color)
+
+            ax.fill_between(
                 rounds,
                 means.to_numpy(dtype=float) - stds.to_numpy(dtype=float),
                 means.to_numpy(dtype=float) + stds.to_numpy(dtype=float),
@@ -706,29 +744,16 @@ def plot_similarity_to_final(
                 alpha=0.15,
             )
 
-            if panel_index == 0:
-                shared_handles.append(mean_line)
-                shared_labels.append(f"{condition} mean")
-
             for seed in SEEDS:
-                seed_values = pivot[seed].to_numpy(dtype=float)
-                seed_line = ax.plot(
+                ax.plot(
                     rounds,
-                    seed_values,
+                    pivot[seed].to_numpy(dtype=float),
                     linewidth=0.9,
                     marker=seed_markers[seed],
                     markersize=4,
                     color=condition_color,
                     alpha=0.48,
-                    label=f"Seed {seed}" if condition_index == 0 else None,
-                )[0]
-                if panel_index == 0 and condition_index == 0:
-                    shared_handles.append(seed_line)
-                    shared_labels.append(f"Seed {seed}")
-
-            if panel_index == 0 and condition_index == 0:
-                shared_handles.append(band)
-                shared_labels.append("Mean ± SD")
+                )
 
         panel_letter = "a" if panel_index == 0 else "b"
         ax.set_xlabel("Communication round")
@@ -740,19 +765,61 @@ def plot_similarity_to_final(
         ax.set_xlim(0, 50)
         ax.grid(axis="both", alpha=0.22)
 
+        if metric == "pearson_final_mean":
+            ax.axhline(
+                0,
+                linestyle="--",
+                linewidth=1.0,
+                color="0.45",
+                zorder=0,
+            )
+
+    fig.suptitle(
+        "Grad-CAM similarity to the final Round-50 explanation",
+        y=0.98,
+    )
+
+    condition_handles = [
+        Line2D(
+            [],
+            [],
+            color=condition_colors[condition],
+            marker="D",
+            linewidth=2.2,
+            label=f"{condition} mean",
+        )
+        for condition in CONDITIONS
+    ]
+    seed_handles = [
+        Line2D(
+            [],
+            [],
+            color="0.35",
+            marker=seed_markers[seed],
+            linestyle="none",
+            markersize=7,
+            label=f"Seed {seed}",
+        )
+        for seed in SEEDS
+    ]
+    band_handle = Patch(
+        facecolor="0.75",
+        edgecolor="0.55",
+        alpha=0.35,
+        label="Condition mean ± SD",
+    )
+
     fig.legend(
-        shared_handles,
-        shared_labels,
+        condition_handles + seed_handles + [band_handle],
         loc="lower center",
         bbox_to_anchor=(0.5, 0.01),
         ncol=6,
         frameon=False,
     )
-    fig.subplots_adjust(bottom=0.22, wspace=0.30)
+    fig.subplots_adjust(top=0.84, bottom=0.23, wspace=0.30)
     fig.savefig(png_path, dpi=300, bbox_inches="tight")
     fig.savefig(pdf_path, bbox_inches="tight")
     plt.close(fig)
-
 
 def plot_target_mismatch_to_final(
     seed_round: pd.DataFrame,
@@ -765,10 +832,9 @@ def plot_target_mismatch_to_final(
 
     fig, ax = plt.subplots(1, 1, figsize=(7.4, 5.4))
     seed_markers = {42: "o", 7: "s", 123: "^"}
-    shared_handles: list[object] = []
-    shared_labels: list[str] = []
+    condition_colors: dict[str, str] = {}
 
-    for condition_index, condition in enumerate(CONDITIONS):
+    for condition in CONDITIONS:
         condition_data = common[common["condition"] == condition]
         pivot = (
             condition_data.pivot(
@@ -782,24 +848,34 @@ def plot_target_mismatch_to_final(
         stds = pivot.std(axis=1, ddof=1)
         rounds = np.asarray(COMMON_ROUNDS, dtype=float)
 
-        mean_line, condition_color = get_condition_color(
+        _, condition_color = get_condition_color(
             ax,
             rounds,
             means.to_numpy(dtype=float),
             f"{condition} mean",
         )
-        band = ax.fill_between(
-            rounds,
+        condition_colors.setdefault(condition, condition_color)
+
+        lower = np.clip(
             means.to_numpy(dtype=float) - stds.to_numpy(dtype=float),
+            0.0,
+            100.0,
+        )
+        upper = np.clip(
             means.to_numpy(dtype=float) + stds.to_numpy(dtype=float),
+            0.0,
+            100.0,
+        )
+        ax.fill_between(
+            rounds,
+            lower,
+            upper,
             color=condition_color,
             alpha=0.15,
         )
-        shared_handles.append(mean_line)
-        shared_labels.append(f"{condition} mean")
 
         for seed in SEEDS:
-            seed_line = ax.plot(
+            ax.plot(
                 rounds,
                 pivot[seed].to_numpy(dtype=float),
                 linewidth=0.9,
@@ -807,37 +883,59 @@ def plot_target_mismatch_to_final(
                 markersize=4,
                 color=condition_color,
                 alpha=0.48,
-                label=f"Seed {seed}" if condition_index == 0 else None,
-            )[0]
-            if condition_index == 0:
-                shared_handles.append(seed_line)
-                shared_labels.append(f"Seed {seed}")
-
-        if condition_index == 0:
-            shared_handles.append(band)
-            shared_labels.append("Mean ± SD")
+            )
 
     ax.set_xlabel("Communication round")
-    ax.set_ylabel("Predicted-target mismatch with Round 50 (%)")
-    ax.set_title("Prediction-target stabilization relative to Round 50")
+    ax.set_ylabel(
+        "Images with a different predicted target from Round 50 (%)"
+    )
+    ax.set_title("Prediction-target mismatch relative to Round 50")
     ax.set_xticks(COMMON_ROUNDS)
     ax.set_xlim(0, 50)
-    ax.set_ylim(bottom=0)
+    ax.set_ylim(0, 100)
     ax.grid(axis="both", alpha=0.22)
 
+    condition_handles = [
+        Line2D(
+            [],
+            [],
+            color=condition_colors[condition],
+            marker="D",
+            linewidth=2.2,
+            label=f"{condition} mean",
+        )
+        for condition in CONDITIONS
+    ]
+    seed_handles = [
+        Line2D(
+            [],
+            [],
+            color="0.35",
+            marker=seed_markers[seed],
+            linestyle="none",
+            markersize=7,
+            label=f"Seed {seed}",
+        )
+        for seed in SEEDS
+    ]
+    band_handle = Patch(
+        facecolor="0.75",
+        edgecolor="0.55",
+        alpha=0.35,
+        label="Condition mean ± SD",
+    )
+
     fig.legend(
-        shared_handles,
-        shared_labels,
+        condition_handles + seed_handles + [band_handle],
         loc="lower center",
         bbox_to_anchor=(0.5, 0.01),
         ncol=3,
         frameon=False,
     )
-    fig.subplots_adjust(bottom=0.26)
+    fig.subplots_adjust(bottom=0.28)
     fig.savefig(png_path, dpi=300, bbox_inches="tight")
     fig.savefig(pdf_path, bbox_inches="tight")
     plt.close(fig)
-
 
 def write_artifact_catalog(path: Path) -> None:
     text = """# XAI-stability artifact catalog
@@ -858,6 +956,7 @@ def write_artifact_catalog(path: Path) -> None:
 
 **Structured name:** Early adjacent-checkpoint Grad-CAM stability  
 **Files:** `fig06_early_adjacent_gradcam_stability.png` and `.pdf`  
+**Figure-level title:** Early adjacent-checkpoint Grad-CAM stability  
 **Panels:** Pearson correlation; Dice score.  
 **Scope:** Only the fully comparable transitions 0→5 and 5→10.  
 **Primary conclusion:** Explanations changed strongly in the first training interval and became substantially more stable by Round 10.
@@ -866,13 +965,14 @@ def write_artifact_catalog(path: Path) -> None:
 
 **Structured name:** Grad-CAM convergence toward the final Round-50 explanation  
 **Files:** `fig07_gradcam_similarity_to_final.png` and `.pdf`  
+**Figure-level title:** Grad-CAM similarity to the final Round-50 explanation  
 **Panels:** Pearson correlation to Round 50; Dice overlap with Round 50.  
 **Scope:** Common checkpoints 0, 5, 10, 20, 30, and 50.  
 **Primary conclusion:** Both IID and non-IID explanations progressively approached the final explanation pattern.
 
 ## FIGURE_08
 
-**Structured name:** Prediction-target stabilization relative to Round 50  
+**Structured name:** Prediction-target mismatch relative to Round 50  
 **Files:** `fig08_prediction_target_mismatch_to_final.png` and `.pdf`  
 **Panels:** One line-chart panel.  
 **Scope:** Common checkpoints 0, 5, 10, 20, 30, and 50.  

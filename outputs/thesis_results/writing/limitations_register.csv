@@ -1,0 +1,9 @@
+limitation_id,limitation,affected_claims,required_wording
+L01,Only three random seeds were evaluated.,All aggregate comparisons,Describe means and standard deviations as descriptive rather than inferential evidence.
+L02,"The experiment uses one dataset, one binary task, one model architecture, and five clients.",Generalizability,Restrict conclusions to the tested VinDr-CXR binary classification configuration.
+L03,The non-IID evaluation uses one controlled label-skew setup.,Client heterogeneity,Do not generalize to all forms or strengths of non-IID data.
+L04,Centralized and federated comparison checkpoints follow different selection rules.,Figures 1–2,State that centralized uses selected validation-F1 checkpoints while federated figures use Round 50.
+L05,Grad-CAM is one post-hoc explanation method and does not prove causal model reasoning.,All XAI interpretations,Use explanation similarity and spatial focus language rather than causal reasoning claims.
+L06,Heatmap comparisons are conditional on compatible predicted targets.,Figures 6–9,Report target-change counts or mismatch rates alongside similarity metrics.
+L07,Qualitative cases are selected examples rather than a random population sample.,Figure 11,"Use the figure to illustrate patterns, not estimate their frequency."
+L08,Independently normalized Grad-CAM overlays may not support absolute activation-strength comparisons.,Figure 11,State the normalization procedure and restrict interpretation to spatial location and shape when appropriate.

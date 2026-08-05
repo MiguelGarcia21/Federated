@@ -1,0 +1,13 @@
+artifact_id,artifact_type,filename,exists,size_bytes
+TABLE_05,table,table05_xai_stability_by_seed_and_round.csv,True,11891
+TABLE_06,table,table06_xai_stability_three_seed_summary.csv,True,8696
+FIGURE_06,figure_png,fig06_early_adjacent_gradcam_stability.png,True,226387
+FIGURE_06,figure_pdf,fig06_early_adjacent_gradcam_stability.pdf,True,22204
+FIGURE_06_SOURCE,source_table,fig06_source_early_adjacent_gradcam_stability.csv,True,2720
+FIGURE_07,figure_png,fig07_gradcam_similarity_to_final.png,True,331797
+FIGURE_07,figure_pdf,fig07_gradcam_similarity_to_final.pdf,True,25683
+FIGURE_07_SOURCE,source_table,fig07_source_gradcam_similarity_to_final.csv,True,7748
+FIGURE_08,figure_png,fig08_prediction_target_mismatch_to_final.png,True,218286
+FIGURE_08,figure_pdf,fig08_prediction_target_mismatch_to_final.pdf,True,21207
+FIGURE_08_SOURCE,source_table,fig08_source_prediction_target_mismatch_to_final.csv,True,7060
+CATALOG_02,catalog,xai_stability_artifact_catalog.md,True,2303

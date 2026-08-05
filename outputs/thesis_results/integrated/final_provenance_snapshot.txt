@@ -1,0 +1,43 @@
+Integrated thesis-results provenance snapshot
+
+Project root: C:\Users\migar\Desktop\Stuff\thesis\Federated
+Git branch: main
+Git commit: 754ba1853b326c268cc3aaa0e0929a0cd4b5b9e1
+Git status: M outputs/thesis_results/predictive/fig01_final_f1_balanced_accuracy_three_seeds.pdf
+ M outputs/thesis_results/predictive/fig01_final_f1_balanced_accuracy_three_seeds.png
+ M outputs/thesis_results/predictive/fig01_source_final_f1_balanced_accuracy.csv
+ M outputs/thesis_results/predictive/fig02_final_accuracy_auc_three_seeds.pdf
+ M outputs/thesis_results/predictive/fig02_final_accuracy_auc_three_seeds.png
+ M outputs/thesis_results/predictive/fig02_source_final_accuracy_auc.csv
+ M outputs/thesis_results/predictive/fig03_best_round_and_final_f1_gap.pdf
+ M outputs/thesis_results/predictive/fig03_best_round_and_final_f1_gap.png
+ M outputs/thesis_results/predictive/fig03_source_best_round_and_final_f1.csv
+ M outputs/thesis_results/predictive/fig04_iid_predictive_convergence.pdf
+ M outputs/thesis_results/predictive/fig04_iid_predictive_convergence.png
+ M outputs/thesis_results/predictive/fig04_source_iid_predictive_convergence.csv
+ M outputs/thesis_results/predictive/fig05_noniid_predictive_convergence.pdf
+ M outputs/thesis_results/predictive/fig05_noniid_predictive_convergence.png
+ M outputs/thesis_results/predictive/fig05_source_noniid_predictive_convergence.csv
+ M outputs/thesis_results/predictive/predictive_artifact_catalog.md
+ M outputs/thesis_results/predictive/predictive_artifact_manifest.csv
+ M outputs/thesis_results/predictive/table01_centralized_selected_checkpoint_by_seed.csv
+ M outputs/thesis_results/predictive/table02_federated_best_and_final_by_seed.csv
+ M outputs/thesis_results/predictive/table03_predictive_comparison_by_seed.csv
+ M src/analysis/build_predictive_results_convergence.py
+ M src/analysis/build_xai_stability_results.py
+?? outputs/thesis_results/cross_model_xai/
+?? outputs/thesis_results/integrated/
+?? outputs/thesis_results/writing/
+?? outputs/thesis_results/xai_stability/
+?? src/analysis/build_cross_model_xai_results.py
+?? src/analysis/build_integrated_thesis_results.py
+?? src/analysis/build_thesis_writing_package.py
+?? src/analysis/build_xai_stability_results_visuals_updated.py
+
+Validated core artifacts: 18
+Qualitative artifact statuses:
+- FIGURE_11_SELECTION: copied_and_checked (prediction_based_correction_applied_to_1_rows)
+- FIGURE_11_CANDIDATES: copied (Candidate table preserved without modification.)
+- FIGURE_11: visually_accepted (Polished 4×3 figure regenerated from the official composite; original composite preserved separately.)
+- FIGURE_11_PDF: visually_accepted (PDF export of the polished qualitative figure.)
+- FIGURE_11_ORIGINAL: copied_for_provenance (Unmodified original composite retained for traceability.)

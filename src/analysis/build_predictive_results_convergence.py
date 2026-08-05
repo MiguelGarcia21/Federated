@@ -535,27 +535,39 @@ def aggregate_lookup(
     return float(row.iloc[0][field])
 
 
+
 def plot_condition_metric(
     ax: plt.Axes,
     comparison: pd.DataFrame,
     metric: str,
     title: str,
 ) -> None:
+    """Plot categorical seed observations without implying a trajectory."""
     x = np.arange(len(CONDITION_ORDER), dtype=float)
+    display_labels = ["Centralized", "IID FedAvg", "Non-IID FedAvg"]
+    seed_offsets = {
+        42: -0.10,
+        7: 0.00,
+        123: 0.10,
+    }
 
+    # Individual seeds are displayed as horizontally offset points.
+    # No connecting lines are used because the x-axis contains separate
+    # categorical training conditions rather than a temporal progression.
     for seed in SEEDS:
         seed_df = (
             comparison[comparison["seed"] == seed]
             .set_index("display_condition")
             .reindex(CONDITION_ORDER)
         )
-        ax.plot(
-            x,
+        ax.scatter(
+            x + seed_offsets[seed],
             seed_df[metric].to_numpy(dtype=float),
             marker="o",
-            linewidth=1.2,
-            alpha=0.65,
+            s=38,
+            alpha=0.75,
             label=f"Seed {seed}",
+            zorder=3,
         )
 
     grouped = (
@@ -571,9 +583,11 @@ def plot_condition_metric(
         linewidth=2.0,
         capsize=5,
         markersize=6,
+        color="tab:red",
         label="Mean ± SD",
+        zorder=4,
     )
-    ax.set_xticks(x, CONDITION_ORDER)
+    ax.set_xticks(x, display_labels)
     ax.set_ylabel(METRIC_LABELS[metric])
     ax.set_title(title)
     ax.grid(axis="y", alpha=0.25)
@@ -585,6 +599,7 @@ def save_two_panel_figure(
     metric_b: str,
     title_a: str,
     title_b: str,
+    figure_title: str,
     png_path: Path,
     pdf_path: Path,
 ) -> None:
@@ -592,20 +607,21 @@ def save_two_panel_figure(
     plot_condition_metric(axes[0], comparison, metric_a, title_a)
     plot_condition_metric(axes[1], comparison, metric_b, title_b)
 
+    fig.suptitle(figure_title, y=0.98)
+
     handles, labels = axes[0].get_legend_handles_labels()
     fig.legend(
-        handles,
-        labels,
+        handles=handles,
+        labels=labels,
         loc="lower center",
         bbox_to_anchor=(0.5, 0.01),
         ncol=4,
         frameon=False,
     )
-    fig.subplots_adjust(bottom=0.22, wspace=0.28)
+    fig.subplots_adjust(top=0.84, bottom=0.22, wspace=0.28)
     fig.savefig(png_path, dpi=300, bbox_inches="tight")
     fig.savefig(pdf_path, bbox_inches="tight")
     plt.close(fig)
-
 
 def plot_best_round_and_gap(
     federated: pd.DataFrame,
@@ -721,6 +737,7 @@ def plot_best_round_and_gap(
     plt.close(fig)
 
 
+
 def plot_federated_convergence(
     roundwise: pd.DataFrame,
     condition: str,
@@ -737,6 +754,16 @@ def plot_federated_convergence(
     if len(subset) != expected_rows:
         raise ValueError(
             f"{condition}: expected {expected_rows} rows, found {len(subset)}."
+        )
+
+    figure_titles = {
+        "IID": "IID FedAvg predictive convergence",
+        "Non-IID": "Non-IID label-skew FedAvg predictive convergence",
+    }
+    if condition not in figure_titles:
+        raise ValueError(
+            f"Unsupported convergence condition {condition!r}. "
+            f"Expected one of {sorted(figure_titles)}."
         )
 
     fig, axes = plt.subplots(1, 2, figsize=(12.5, 5.4))
@@ -785,7 +812,7 @@ def plot_federated_convergence(
             means - stds,
             means + stds,
             color="0.6",
-            alpha=0.20,
+            alpha=0.25,
             label="Mean ± SD",
         )
 
@@ -801,21 +828,29 @@ def plot_federated_convergence(
         ax.set_ylabel(ylabel)
         ax.set_xlim(1, 50)
         ax.set_xticks([1, 5, 10, 20, 30, 40, 50])
+
+        # Fixed metric-specific limits are shared by Figures 4 and 5 so
+        # IID and non-IID convergence can be compared fairly.
+        if metric == "f1":
+            ax.set_ylim(0.45, 0.91)
+        elif metric == "auc":
+            ax.set_ylim(0.84, 0.98)
+
         ax.grid(axis="both", alpha=0.22)
 
+    fig.suptitle(figure_titles[condition], y=0.98)
     fig.legend(
-        shared_handles,
-        shared_labels,
+        handles=shared_handles,
+        labels=shared_labels,
         loc="lower center",
         bbox_to_anchor=(0.5, 0.01),
         ncol=5,
         frameon=False,
     )
-    fig.subplots_adjust(bottom=0.22, wspace=0.30)
+    fig.subplots_adjust(top=0.84, bottom=0.22, wspace=0.30)
     fig.savefig(png_path, dpi=300, bbox_inches="tight")
     fig.savefig(pdf_path, bbox_inches="tight")
     plt.close(fig)
-
 
 def fmt(value: float, digits: int = 3) -> str:
     return f"{value:.{digits}f}"
@@ -944,7 +979,8 @@ def write_artifact_catalog(output_path: Path) -> None:
 **Panels:** F1; balanced accuracy.  
 **Primary conclusion:** Final/selected predictive performance was broadly comparable across conditions.  
 **Suggested placement:** Full-width figure followed by two Results paragraphs.  
-**Caption:** Selected centralized checkpoints and final Round-50 federated performance across seeds 42, 7, and 123. Lines connect results from the same seed; diamonds show the across-seed mean with sample standard deviation. Centralized checkpoints were selected using validation F1, whereas federated values correspond to Round 50.
+**Visual structure:** Individual seed points are horizontally offset within each condition; diamonds and error bars show the across-seed mean and sample standard deviation. No lines connect the categorical training conditions.  
+**Caption:** Selected centralized checkpoints and final Round-50 federated performance across seeds 42, 7, and 123. Centralized checkpoints were selected using validation F1, whereas federated values correspond to Round 50.
 
 ## FIGURE_02
 
@@ -953,7 +989,8 @@ def write_artifact_catalog(output_path: Path) -> None:
 **Panels:** Accuracy; ROC AUC.  
 **Primary conclusion:** The absence of a major performance collapse was also visible in overall accuracy and ranking ability.  
 **Suggested placement:** After the interpretation of Figure 1, with one introductory and two follow-up paragraphs.  
-**Caption:** Accuracy and ROC AUC for the selected centralized checkpoint and final federated models across three seeds. Individual lines represent paired seed results; diamonds show the mean and sample standard deviation.
+**Visual structure:** Individual seed points are horizontally offset within each condition; diamonds and error bars show the mean and sample standard deviation. No lines connect the categorical training conditions.  
+**Caption:** Accuracy and ROC AUC for the selected centralized checkpoint and final federated models across three seeds.
 
 ## FIGURE_03
 
@@ -971,7 +1008,7 @@ def write_artifact_catalog(output_path: Path) -> None:
 **Panels:** Validation F1 over rounds; validation ROC AUC over rounds.  
 **Primary conclusion:** IID FedAvg improved rapidly and entered a strong performance region before the final communication round, while smaller seed-specific fluctuations remained.  
 **Suggested placement:** After Figure 3, with separate Results discussion for threshold-dependent and ranking-oriented convergence.  
-**Visual structure:** Three thin seed trajectories, one thicker three-seed mean, and a sample-standard-deviation band in each panel.
+**Visual structure:** Three thin seed trajectories, one thicker three-seed mean, and a sample-standard-deviation band in each panel. The F1 and ROC-AUC limits are fixed across Figures 4 and 5 for direct visual comparison. The F1 and ROC-AUC limits are fixed across Figures 4 and 5 for direct visual comparison.
 
 ## FIGURE_05
 
@@ -1129,8 +1166,9 @@ def main() -> int:
         comparison=comparison,
         metric_a="f1",
         metric_b="balanced_accuracy",
-        title_a="F1 across training conditions",
-        title_b="Balanced accuracy across training conditions",
+        title_a="(a) Validation F1",
+        title_b="(b) Balanced accuracy",
+        figure_title="Predictive performance across training conditions",
         png_path=output_dir / "fig01_final_f1_balanced_accuracy_three_seeds.png",
         pdf_path=output_dir / "fig01_final_f1_balanced_accuracy_three_seeds.pdf",
     )
@@ -1138,8 +1176,11 @@ def main() -> int:
         comparison=comparison,
         metric_a="accuracy",
         metric_b="auc",
-        title_a="Accuracy across training conditions",
-        title_b="ROC AUC across training conditions",
+        title_a="(a) Validation accuracy",
+        title_b="(b) Validation ROC AUC",
+        figure_title=(
+            "Overall accuracy and ranking performance across training conditions"
+        ),
         png_path=output_dir / "fig02_final_accuracy_auc_three_seeds.png",
         pdf_path=output_dir / "fig02_final_accuracy_auc_three_seeds.pdf",
     )

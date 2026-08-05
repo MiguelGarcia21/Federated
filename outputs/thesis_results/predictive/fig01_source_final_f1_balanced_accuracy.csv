@@ -1,10 +1,10 @@
 seed,display_condition,f1,balanced_accuracy,experiment_id,source_csv
-42,Centralized selected,0.855556,0.902401,exp01_centralized_vindr_binary_seed42,/workspace/thesis-fl-xai/outputs/metrics/exp01_centralized_vindr_binary_seed42_centralized_metrics.csv
-7,Centralized selected,0.861816,0.903939,exp01_centralized_vindr_binary_seed7,/workspace/thesis-fl-xai/outputs/metrics/exp01_centralized_vindr_binary_seed7_centralized_metrics.csv
-123,Centralized selected,0.861824,0.910380,exp01_centralized_vindr_binary_seed123,/workspace/thesis-fl-xai/outputs/metrics/exp01_centralized_vindr_binary_seed123_centralized_metrics.csv
-42,IID Round 50,0.860045,0.902565,exp02_fedavg_iid_5clients_seed42,/workspace/thesis-fl-xai/outputs/metrics/exp02_fedavg_iid_5clients_seed42_flower_fedavg_metrics.csv
-7,IID Round 50,0.877135,0.919784,exp02_fedavg_iid_5clients_seed7,/workspace/thesis-fl-xai/outputs/metrics/exp02_fedavg_iid_5clients_seed7_flower_fedavg_metrics.csv
-123,IID Round 50,0.864481,0.912225,exp02_fedavg_iid_5clients_seed123,/workspace/thesis-fl-xai/outputs/metrics/exp02_fedavg_iid_5clients_seed123_flower_fedavg_metrics.csv
-42,Non-IID Round 50,0.852973,0.905901,exp03_fedavg_noniid_5clients_seed42,/workspace/thesis-fl-xai/outputs/metrics/exp03_fedavg_noniid_5clients_seed42_flower_fedavg_metrics.csv
-7,Non-IID Round 50,0.871309,0.913235,exp03_fedavg_noniid_5clients_seed7,/workspace/thesis-fl-xai/outputs/metrics/exp03_fedavg_noniid_5clients_seed7_flower_fedavg_metrics.csv
-123,Non-IID Round 50,0.855574,0.904692,exp03_fedavg_noniid_5clients_seed123,/workspace/thesis-fl-xai/outputs/metrics/exp03_fedavg_noniid_5clients_seed123_flower_fedavg_metrics.csv
+42,Centralized selected,0.855556,0.902401,exp01_centralized_vindr_binary_seed42,C:\Users\migar\Desktop\Stuff\thesis\Federated\outputs\metrics\exp01_centralized_vindr_binary_seed42_centralized_metrics.csv
+7,Centralized selected,0.861816,0.903939,exp01_centralized_vindr_binary_seed7,C:\Users\migar\Desktop\Stuff\thesis\Federated\outputs\metrics\exp01_centralized_vindr_binary_seed7_centralized_metrics.csv
+123,Centralized selected,0.861824,0.910380,exp01_centralized_vindr_binary_seed123,C:\Users\migar\Desktop\Stuff\thesis\Federated\outputs\metrics\exp01_centralized_vindr_binary_seed123_centralized_metrics.csv
+42,IID Round 50,0.860045,0.902565,exp02_fedavg_iid_5clients_seed42,C:\Users\migar\Desktop\Stuff\thesis\Federated\outputs\metrics\exp02_fedavg_iid_5clients_seed42_flower_fedavg_metrics.csv
+7,IID Round 50,0.877135,0.919784,exp02_fedavg_iid_5clients_seed7,C:\Users\migar\Desktop\Stuff\thesis\Federated\outputs\metrics\exp02_fedavg_iid_5clients_seed7_flower_fedavg_metrics.csv
+123,IID Round 50,0.864481,0.912225,exp02_fedavg_iid_5clients_seed123,C:\Users\migar\Desktop\Stuff\thesis\Federated\outputs\metrics\exp02_fedavg_iid_5clients_seed123_flower_fedavg_metrics.csv
+42,Non-IID Round 50,0.852973,0.905901,exp03_fedavg_noniid_5clients_seed42,C:\Users\migar\Desktop\Stuff\thesis\Federated\outputs\metrics\exp03_fedavg_noniid_5clients_seed42_flower_fedavg_metrics.csv
+7,Non-IID Round 50,0.871309,0.913235,exp03_fedavg_noniid_5clients_seed7,C:\Users\migar\Desktop\Stuff\thesis\Federated\outputs\metrics\exp03_fedavg_noniid_5clients_seed7_flower_fedavg_metrics.csv
+123,Non-IID Round 50,0.855574,0.904692,exp03_fedavg_noniid_5clients_seed123,C:\Users\migar\Desktop\Stuff\thesis\Federated\outputs\metrics\exp03_fedavg_noniid_5clients_seed123_flower_fedavg_metrics.csv

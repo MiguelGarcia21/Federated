@@ -1,4 +1,4 @@
 seed,condition,selection_rule,selected_epoch_or_round,accuracy,f1,auc,balanced_accuracy,loss,experiment_id,source_csv
-42,Centralized,Selected best validation F1,2,0.913333,0.855556,0.964101,0.902401,0.251901,exp01_centralized_vindr_binary_seed42,/workspace/thesis-fl-xai/outputs/metrics/exp01_centralized_vindr_binary_seed42_centralized_metrics.csv
-7,Centralized,Selected best validation F1,10,0.918333,0.861816,0.966727,0.903939,0.271102,exp01_centralized_vindr_binary_seed7,/workspace/thesis-fl-xai/outputs/metrics/exp01_centralized_vindr_binary_seed7_centralized_metrics.csv
-123,Centralized,Selected best validation F1,9,0.915667,0.861824,0.970983,0.910380,0.234629,exp01_centralized_vindr_binary_seed123,/workspace/thesis-fl-xai/outputs/metrics/exp01_centralized_vindr_binary_seed123_centralized_metrics.csv
+42,Centralized,Selected best validation F1,2,0.913333,0.855556,0.964101,0.902401,0.251901,exp01_centralized_vindr_binary_seed42,C:\Users\migar\Desktop\Stuff\thesis\Federated\outputs\metrics\exp01_centralized_vindr_binary_seed42_centralized_metrics.csv
+7,Centralized,Selected best validation F1,10,0.918333,0.861816,0.966727,0.903939,0.271102,exp01_centralized_vindr_binary_seed7,C:\Users\migar\Desktop\Stuff\thesis\Federated\outputs\metrics\exp01_centralized_vindr_binary_seed7_centralized_metrics.csv
+123,Centralized,Selected best validation F1,9,0.915667,0.861824,0.970983,0.910380,0.234629,exp01_centralized_vindr_binary_seed123,C:\Users\migar\Desktop\Stuff\thesis\Federated\outputs\metrics\exp01_centralized_vindr_binary_seed123_centralized_metrics.csv

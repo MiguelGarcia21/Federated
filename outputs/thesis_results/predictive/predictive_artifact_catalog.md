@@ -35,7 +35,8 @@
 **Panels:** F1; balanced accuracy.  
 **Primary conclusion:** Final/selected predictive performance was broadly comparable across conditions.  
 **Suggested placement:** Full-width figure followed by two Results paragraphs.  
-**Caption:** Selected centralized checkpoints and final Round-50 federated performance across seeds 42, 7, and 123. Lines connect results from the same seed; diamonds show the across-seed mean with sample standard deviation. Centralized checkpoints were selected using validation F1, whereas federated values correspond to Round 50.
+**Visual structure:** Individual seed points are horizontally offset within each condition; diamonds and error bars show the across-seed mean and sample standard deviation. No lines connect the categorical training conditions.  
+**Caption:** Selected centralized checkpoints and final Round-50 federated performance across seeds 42, 7, and 123. Centralized checkpoints were selected using validation F1, whereas federated values correspond to Round 50.
 
 ## FIGURE_02
 
@@ -44,7 +45,8 @@
 **Panels:** Accuracy; ROC AUC.  
 **Primary conclusion:** The absence of a major performance collapse was also visible in overall accuracy and ranking ability.  
 **Suggested placement:** After the interpretation of Figure 1, with one introductory and two follow-up paragraphs.  
-**Caption:** Accuracy and ROC AUC for the selected centralized checkpoint and final federated models across three seeds. Individual lines represent paired seed results; diamonds show the mean and sample standard deviation.
+**Visual structure:** Individual seed points are horizontally offset within each condition; diamonds and error bars show the mean and sample standard deviation. No lines connect the categorical training conditions.  
+**Caption:** Accuracy and ROC AUC for the selected centralized checkpoint and final federated models across three seeds.
 
 ## FIGURE_03
 
@@ -62,7 +64,7 @@
 **Panels:** Validation F1 over rounds; validation ROC AUC over rounds.  
 **Primary conclusion:** IID FedAvg improved rapidly and entered a strong performance region before the final communication round, while smaller seed-specific fluctuations remained.  
 **Suggested placement:** After Figure 3, with separate Results discussion for threshold-dependent and ranking-oriented convergence.  
-**Visual structure:** Three thin seed trajectories, one thicker three-seed mean, and a sample-standard-deviation band in each panel.
+**Visual structure:** Three thin seed trajectories, one thicker three-seed mean, and a sample-standard-deviation band in each panel. The F1 and ROC-AUC limits are fixed across Figures 4 and 5 for direct visual comparison. The F1 and ROC-AUC limits are fixed across Figures 4 and 5 for direct visual comparison.
 
 ## FIGURE_05
 
