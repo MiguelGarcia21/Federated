@@ -6,9 +6,6 @@ from typing import Any, Dict
 import torch
 import yaml
 
-# Allows this script to be run from the repository root as:
-# python src/experiments/run_exp01_centralized.py \
-#   --config configs/vindr_binary_full.yaml
 REPO_ROOT = Path(__file__).resolve().parents[2]
 
 if str(REPO_ROOT) not in sys.path:
@@ -88,7 +85,6 @@ def validate_config(config: Dict[str, Any]) -> None:
     if not experiment_id:
         raise ValueError("experiment_id cannot be empty.")
 
-    # experiment_id must remain a plain identifier, not a path.
     if Path(experiment_id).name != experiment_id:
         raise ValueError(
             "experiment_id must be a plain identifier without "

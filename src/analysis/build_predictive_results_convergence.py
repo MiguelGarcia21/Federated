@@ -551,9 +551,6 @@ def plot_condition_metric(
         123: 0.10,
     }
 
-    # Individual seeds are displayed as horizontally offset points.
-    # No connecting lines are used because the x-axis contains separate
-    # categorical training conditions rather than a temporal progression.
     for seed in SEEDS:
         seed_df = (
             comparison[comparison["seed"] == seed]
@@ -642,7 +639,7 @@ def plot_best_round_and_gap(
     best_f1 = best.pivot(index="seed", columns="condition", values="f1")
     final_f1 = final.pivot(index="seed", columns="condition", values="f1")
 
-    # Convert the raw F1 difference into percentage points for readability.
+    # convert the raw F1 difference into percentage points for readability. Fix 3
     gap_percentage_points = (best_f1 - final_f1) * 100.0
 
     fig, axes = plt.subplots(1, 2, figsize=(12.5, 5.4))
@@ -829,8 +826,7 @@ def plot_federated_convergence(
         ax.set_xlim(1, 50)
         ax.set_xticks([1, 5, 10, 20, 30, 40, 50])
 
-        # Fixed metric-specific limits are shared by Figures 4 and 5 so
-        # IID and non-IID convergence can be compared fairly.
+        # Fixed metric-specific limits are shared by Figures 4 and 5
         if metric == "f1":
             ax.set_ylim(0.45, 0.91)
         elif metric == "auc":

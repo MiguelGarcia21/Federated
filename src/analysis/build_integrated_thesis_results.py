@@ -294,7 +294,6 @@ def extract_gradcam_panels(
         minimum_length=max(30, int(height * 0.10)),
     )
 
-    # Retain the largest image-like row bands and restore top-to-bottom order.
     row_intervals = sorted(
         sorted(
             row_intervals,
@@ -455,7 +454,6 @@ def rebuild_qualitative_figure(
     )
     fig.canvas.draw()
 
-    # Shared model headings are shown once instead of being repeated per row.
     for column_index, (model_name, _, _) in enumerate(model_columns):
         position = axes[0, column_index].get_position()
         fig.text(
@@ -533,9 +531,6 @@ def prepare_qualitative(
     qualitative_dir = output_dir / "qualitative"
     qualitative_dir.mkdir(parents=True, exist_ok=True)
 
-    # Search only official source locations, never the integrated output
-    # directory itself. This prevents a rerun from using the polished figure
-    # as its own source.
     figure_roots = (
         figures_dir,
         thesis_results_dir / "cross_model_xai" / "qualitative",

@@ -474,8 +474,7 @@ def make_centralized_evaluate_fn(
     ):
         del evaluate_config
 
-        # Preserve the previous experiment behavior: validation metrics
-        # begin after Round 1 rather than evaluating the untrained model.
+        # Preserve the previous experiment behavior: validation metrics begin after Round 1 rather than evaluating the untrained model.
         if server_round == 0:
             return None
 

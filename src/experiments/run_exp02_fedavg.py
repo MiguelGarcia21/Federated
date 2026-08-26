@@ -5,9 +5,6 @@ from typing import Any, Dict
 
 import yaml
 
-# Allows execution from the repository root:
-# python src/experiments/run_exp02_fedavg.py \
-#   --config configs/exp02_fedavg_iid_5clients.yaml
 REPO_ROOT = Path(__file__).resolve().parents[2]
 
 if str(REPO_ROOT) not in sys.path:

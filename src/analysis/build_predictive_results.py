@@ -568,7 +568,7 @@ def plot_best_round_and_gap(
     best_f1 = best.pivot(index="seed", columns="condition", values="f1")
     final_f1 = final.pivot(index="seed", columns="condition", values="f1")
 
-    # Convert the raw F1 difference into percentage points for readability.
+    # Convert the raw F1 difference into percentage points for readability. Fix 2
     gap_percentage_points = (best_f1 - final_f1) * 100.0
 
     fig, axes = plt.subplots(1, 2, figsize=(12.5, 5.4))
