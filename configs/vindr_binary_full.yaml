@@ -1,49 +1,29 @@
-# Experiment 1:
-# Full centralized VinDr binary normal-vs-abnormal baseline.
-
 experiment_id: "exp01_centralized_vindr_binary_seed42"
 run_type: "centralized"
-
 project_root: "/workspace/thesis-fl-xai"
 raw_data_dir: "/workspace/data/raw/vindr"
 output_dir: "/workspace/thesis-fl-xai/outputs"
-
 train_csv: "/workspace/data/raw/vindr/train.csv"
 train_image_dir: "/workspace/data/raw/vindr/train"
-
 dataset: "vindr"
 task: "binary_abnormal"
-
-# Full-dataset split
 use_full_dataset: true
 val_fraction: 0.20
 reuse_split_files: false
 split_file_prefix: "exp01_centralized_vindr_binary_seed42"
-
-# Fixed validation subset reused by later XAI experiments
 xai_subset_size: 200
-
-# Model
 model_name: "resnet18"
 num_classes: 2
 pretrained: false
 image_size: 224
-
-# Training
 batch_size: 32
 num_workers: 8
 learning_rate: 0.0001
 epochs: 10
 weight_decay: 0.01
 seed: 42
-
-# Data augmentation
 horizontal_flip: true
 rotation_degrees: 0.0
-
-# Model selection
 checkpoint_metric: "f1"
-
-# Output behavior
 save_predictions: true
 create_output_zip: false

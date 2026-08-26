@@ -1,48 +1,29 @@
-# Experiment 4A:
-# Round-wise Grad-CAM tracking for the IID FedAvg model.
-
 experiment_id: "exp04_roundwise_gradcam_iid_seed42"
 run_type: "roundwise_gradcam"
-
 project_root: "/workspace/thesis-fl-xai"
 raw_data_dir: "/workspace/data/raw/vindr"
 output_dir: "/workspace/thesis-fl-xai/outputs"
-
 train_csv: "/workspace/data/raw/vindr/train.csv"
 train_image_dir: "/workspace/data/raw/vindr/train"
-
 dataset: "vindr"
 task: "binary_abnormal"
-
-# Recreate the same validation split used by Experiments 1 and 2
 use_full_dataset: true
 val_fraction: 0.20
 reuse_split_files: true
-
 canonical_train_split_path: "/workspace/thesis-fl-xai/data/interim/exp01_centralized_vindr_binary_seed42_train_split.csv"
 canonical_val_split_path: "/workspace/thesis-fl-xai/data/interim/exp01_centralized_vindr_binary_seed42_val_split.csv"
 canonical_xai_ids_path: "/workspace/thesis-fl-xai/data/interim/exp01_centralized_vindr_binary_seed42_xai_image_ids.csv"
-
-# Fixed XAI subset
 xai_subset_size: 200
-
-# Model
 model_name: "resnet18"
 num_classes: 2
 pretrained: false
 image_size: 224
-
-# Image loading
 image_source: "cache"
 image_cache_dir: "/workspace/thesis-fl-xai/data/processed/vindr_binary_224_png"
 image_cache_extension: ".png"
-
-# Source federated experiment
 source_experiment_id: "exp02_fedavg_iid_5clients_seed42"
 source_split_type: "iid"
 source_checkpoint_dir: "/workspace/thesis-fl-xai/outputs/checkpoints/exp02_fedavg_iid_5clients_seed42"
-
-# Checkpoints evaluated
 checkpoint_rounds:
   - 0
   - 5
@@ -55,15 +36,8 @@ checkpoint_rounds:
   - 40
   - 45
   - 50
-
 final_round: 50
-
-# Heatmap comparison
 xai_method: "gradcam"
 heatmap_threshold: 0.50
-
-# Reproducibility
 seed: 42
-
-# Output behavior
 create_output_zip: false
