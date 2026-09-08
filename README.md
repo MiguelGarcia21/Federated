@@ -1,4 +1,4 @@
-# [FINAL THESIS TITLE]
+# Predictive Performance and Grad-CAM Attribution Behaviour Under Centralized, IID, and Non-IID Federated Training
 
 **Bachelor Thesis — Bachelor of Science (B.Sc.) in Software Engineering**
 
@@ -17,7 +17,7 @@ The study examines whether models trained centrally and through federated learni
 
 The experimental application is binary **normal-versus-abnormal chest-radiograph classification** using the **VinDr-CXR** dataset.
 
-> **Thesis title:** [FINAL THESIS TITLE]
+> **Thesis title:** Predictive Performance and Grad-CAM Attribution Behaviour Under Centralized, IID, and Non-IID Federated Training
 
 ---
 
@@ -308,7 +308,7 @@ The final thesis citation will be added after the thesis title and university su
 
 ```text
 Miguel Angel Garcia Higuita.
-"[FINAL THESIS TITLE]."
+"Predictive Performance and Grad-CAM Attribution Behaviour Under Centralized, IID, and Non-IID Federated Training."
 Bachelor Thesis, Bachelor of Science in Software Engineering,
 University of Europe for Applied Sciences, 2026.
 ```
