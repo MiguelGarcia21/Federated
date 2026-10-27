@@ -364,7 +364,7 @@ def format_prediction(
     except (TypeError, ValueError):
         return prediction_text
 
-    return f"{prediction_text} | Confidence: {confidence:.3f}"
+    return f"{prediction_text} | Confidence: {confidence:.5f}"
 
 
 def rebuild_qualitative_figure(
