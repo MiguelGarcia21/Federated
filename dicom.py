@@ -1,34 +1,24 @@
-
 from pathlib import Path
 import pandas as pd
 import pydicom
 
-# Adjust these paths if necessary
-from pathlib import Path
-import pandas as pd
-import pydicom
-
-# Project root: directory containing this Python script
-PROJECT_ROOT = Path(__file__).resolve().parent
-
-XAI_CSV = (
-    PROJECT_ROOT
-    / "data"
-    / "interim"
-    / "exp01_centralized_vindr_binary_seed42_xai_image_ids.csv"
+XAI_CSV = Path(
+    "/workspace/data/interim/"
+    "exp01_centralized_vindr_binary_seed42_xai_image_ids.csv"
 )
 
-DICOM_DIR = PROJECT_ROOT / "data" / "raw" / "vindr" / "train"
+# Correct absolute path to your DICOM data
+DICOM_DIR = Path("/workspace/data/raw/vindr/train")
 
-OUTPUT_CSV = PROJECT_ROOT / "vindr_xai59_dicom_dimensions.csv"
+OUTPUT_CSV = Path("/workspace/thesis-fl-xai/vindr_xai59_dicom_dimensions.csv")
 
-# Load the existing 200-image XAI subset
 xai = pd.read_csv(XAI_CSV)
 
-# Select only abnormal images
 abnormal = xai[xai["binary_label"] == 1].copy()
 
 print(f"Abnormal images: {len(abnormal)}")
+print(f"DICOM directory exists: {DICOM_DIR.exists()}")
+print(f"CSV exists: {XAI_CSV.exists()}")
 
 records = []
 
@@ -46,11 +36,7 @@ for image_id in abnormal["image_id"]:
         continue
 
     try:
-        # Read header only, without pixel data
-        ds = pydicom.dcmread(
-            str(dicom_path),
-            stop_before_pixels=True
-        )
+        ds = pydicom.dcmread(str(dicom_path), stop_before_pixels=True)
 
         records.append({
             "image_id": image_id,
@@ -68,7 +54,6 @@ for image_id in abnormal["image_id"]:
             "status": "error"
         })
 
-# Export results
 results = pd.DataFrame(records)
 results.to_csv(OUTPUT_CSV, index=False)
 
