@@ -1,0 +1,560 @@
+﻿|-- configs
+|   |-- chexpert_reduced.yaml
+|   |-- exp01_centralized_vindr_binary_seed123.yaml
+|   |-- exp01_centralized_vindr_binary_seed7.yaml
+|   |-- exp02_fedavg_iid_5clients.yaml
+|   |-- exp02_fedavg_iid_5clients_seed123.yaml
+|   |-- exp02_fedavg_iid_5clients_seed7.yaml
+|   |-- exp02_fedavg_iid_5clients_timing.yaml
+|   |-- exp03_fedavg_noniid_5clients.yaml
+|   |-- exp03_fedavg_noniid_5clients_sanity.yaml
+|   |-- exp03_fedavg_noniid_5clients_seed123.yaml
+|   |-- exp03_fedavg_noniid_5clients_seed7.yaml
+|   |-- exp04_roundwise_gradcam_iid.yaml
+|   |-- exp04_roundwise_gradcam_iid_sanity.yaml
+|   |-- exp04_roundwise_gradcam_iid_seed123.yaml
+|   |-- exp04_roundwise_gradcam_iid_seed7.yaml
+|   |-- exp04_roundwise_gradcam_noniid.yaml
+|   |-- exp04_roundwise_gradcam_noniid_sanity.yaml
+|   |-- exp04_roundwise_gradcam_noniid_seed123.yaml
+|   |-- exp04_roundwise_gradcam_noniid_seed7.yaml
+|   |-- exp05_cross_model_gradcam_seed123.yaml
+|   |-- exp05_cross_model_gradcam_seed42.yaml
+|   |-- exp05_cross_model_gradcam_seed7.yaml
+|   |-- vindr_binary_debug.yaml
+|   \-- vindr_binary_full.yaml
+|-- data
+|   |-- interim
+|   |   |-- client_splits
+|   |   |   |-- exp02_fedavg_iid_5clients_5round_sanity_seed42
+|   |   |   |   |-- client_0_iid.csv
+|   |   |   |   |-- client_1_iid.csv
+|   |   |   |   |-- client_2_iid.csv
+|   |   |   |   |-- client_3_iid.csv
+|   |   |   |   |-- client_4_iid.csv
+|   |   |   |   \-- exp02_fedavg_iid_5clients_5round_sanity_seed42_iid_distribution.csv
+|   |   |   |-- exp02_fedavg_iid_5clients_seed123
+|   |   |   |   |-- client_0_iid.csv
+|   |   |   |   |-- client_1_iid.csv
+|   |   |   |   |-- client_2_iid.csv
+|   |   |   |   |-- client_3_iid.csv
+|   |   |   |   |-- client_4_iid.csv
+|   |   |   |   \-- exp02_fedavg_iid_5clients_seed123_iid_distribution.csv
+|   |   |   |-- exp02_fedavg_iid_5clients_seed42
+|   |   |   |   |-- client_0_iid.csv
+|   |   |   |   |-- client_1_iid.csv
+|   |   |   |   |-- client_2_iid.csv
+|   |   |   |   |-- client_3_iid.csv
+|   |   |   |   |-- client_4_iid.csv
+|   |   |   |   \-- exp02_fedavg_iid_5clients_seed42_iid_distribution.csv
+|   |   |   |-- exp02_fedavg_iid_5clients_seed7
+|   |   |   |   |-- client_0_iid.csv
+|   |   |   |   |-- client_1_iid.csv
+|   |   |   |   |-- client_2_iid.csv
+|   |   |   |   |-- client_3_iid.csv
+|   |   |   |   |-- client_4_iid.csv
+|   |   |   |   \-- exp02_fedavg_iid_5clients_seed7_iid_distribution.csv
+|   |   |   |-- exp02_fedavg_iid_5clients_timing_seed42
+|   |   |   |   |-- client_0_iid.csv
+|   |   |   |   |-- client_1_iid.csv
+|   |   |   |   |-- client_2_iid.csv
+|   |   |   |   |-- client_3_iid.csv
+|   |   |   |   |-- client_4_iid.csv
+|   |   |   |   \-- exp02_fedavg_iid_5clients_timing_seed42_iid_distribution.csv
+|   |   |   |-- exp03_fedavg_noniid_5clients_5round_sanity_seed42
+|   |   |   |   |-- client_0_non_iid_label_skew.csv
+|   |   |   |   |-- client_1_non_iid_label_skew.csv
+|   |   |   |   |-- client_2_non_iid_label_skew.csv
+|   |   |   |   |-- client_3_non_iid_label_skew.csv
+|   |   |   |   |-- client_4_non_iid_label_skew.csv
+|   |   |   |   \-- exp03_fedavg_noniid_5clients_5round_sanity_seed42_non_iid_label_skew_distribution.csv
+|   |   |   |-- exp03_fedavg_noniid_5clients_seed123
+|   |   |   |   |-- client_0_non_iid_label_skew.csv
+|   |   |   |   |-- client_1_non_iid_label_skew.csv
+|   |   |   |   |-- client_2_non_iid_label_skew.csv
+|   |   |   |   |-- client_3_non_iid_label_skew.csv
+|   |   |   |   |-- client_4_non_iid_label_skew.csv
+|   |   |   |   \-- exp03_fedavg_noniid_5clients_seed123_non_iid_label_skew_distribution.csv
+|   |   |   |-- exp03_fedavg_noniid_5clients_seed42
+|   |   |   |   |-- client_0_non_iid_label_skew.csv
+|   |   |   |   |-- client_1_non_iid_label_skew.csv
+|   |   |   |   |-- client_2_non_iid_label_skew.csv
+|   |   |   |   |-- client_3_non_iid_label_skew.csv
+|   |   |   |   |-- client_4_non_iid_label_skew.csv
+|   |   |   |   \-- exp03_fedavg_noniid_5clients_seed42_non_iid_label_skew_distribution.csv
+|   |   |   \-- exp03_fedavg_noniid_5clients_seed7
+|   |   |       |-- client_0_non_iid_label_skew.csv
+|   |   |       |-- client_1_non_iid_label_skew.csv
+|   |   |       |-- client_2_non_iid_label_skew.csv
+|   |   |       |-- client_3_non_iid_label_skew.csv
+|   |   |       |-- client_4_non_iid_label_skew.csv
+|   |   |       \-- exp03_fedavg_noniid_5clients_seed7_non_iid_label_skew_distribution.csv
+|   |   |-- debug_client_0_split.csv
+|   |   |-- debug_client_1_split.csv
+|   |   |-- debug_client_2_split.csv
+|   |   |-- debug_train_split.csv
+|   |   |-- debug_val_split.csv
+|   |   |-- exp01_centralized_vindr_binary_seed42_train_split.csv
+|   |   |-- exp01_centralized_vindr_binary_seed42_val_split.csv
+|   |   |-- exp01_centralized_vindr_binary_seed42_xai_image_ids.csv
+|   |   |-- fixed_xai_image_ids.csv
+|   |   \-- vindr_binary_image_level.csv
+|   |-- processed
+|   |   |-- vindr_binary_224_png
+|   |   |   \-- manifest.csv
+|   |   \-- req.txt
+|   |-- raw
+|   |   \-- req.txt
+|   \-- token
+|       \-- kaggle token.txt
+|-- outputs
+|   |-- checkpoints
+|   |   \-- exp01_centralized_vindr_binary_seed42
+|   |       \-- config.yaml
+|   |-- figures
+|   |   |-- exp01_exp02_exp03_predictive_performance_seed42.pdf
+|   |   |-- exp02_exp03_exp04_performance_xai_convergence_seed42.pdf
+|   |   \-- exp04_roundwise_gradcam_stability_seed42.pdf
+|   |-- heatmaps
+|   |   |-- debug_runpod_reproduce_kaggle
+|   |   |   |-- centralized_debug
+|   |   |   \-- flower_fedavg_debug
+|   |   |-- exp04_roundwise_gradcam_iid_sanity_seed42
+|   |   |   \-- iid
+|   |   |       |-- round_0
+|   |   |       |   |-- overlays
+|   |   |       |   \-- raw
+|   |   |       \-- round_50
+|   |   |           |-- overlays
+|   |   |           \-- raw
+|   |   |-- exp04_roundwise_gradcam_iid_seed123
+|   |   |   \-- iid
+|   |   |       |-- round_0
+|   |   |       |   |-- overlays
+|   |   |       |   \-- raw
+|   |   |       |-- round_10
+|   |   |       |   |-- overlays
+|   |   |       |   \-- raw
+|   |   |       |-- round_20
+|   |   |       |   |-- overlays
+|   |   |       |   \-- raw
+|   |   |       |-- round_30
+|   |   |       |   |-- overlays
+|   |   |       |   \-- raw
+|   |   |       |-- round_5
+|   |   |       |   |-- overlays
+|   |   |       |   \-- raw
+|   |   |       \-- round_50
+|   |   |           |-- overlays
+|   |   |           \-- raw
+|   |   |-- exp04_roundwise_gradcam_iid_seed42
+|   |   |   \-- iid
+|   |   |       |-- round_0
+|   |   |       |   |-- overlays
+|   |   |       |   \-- raw
+|   |   |       |-- round_10
+|   |   |       |   |-- overlays
+|   |   |       |   \-- raw
+|   |   |       |-- round_15
+|   |   |       |   |-- overlays
+|   |   |       |   \-- raw
+|   |   |       |-- round_20
+|   |   |       |   |-- overlays
+|   |   |       |   \-- raw
+|   |   |       |-- round_25
+|   |   |       |   |-- overlays
+|   |   |       |   \-- raw
+|   |   |       |-- round_30
+|   |   |       |   |-- overlays
+|   |   |       |   \-- raw
+|   |   |       |-- round_35
+|   |   |       |   |-- overlays
+|   |   |       |   \-- raw
+|   |   |       |-- round_40
+|   |   |       |   |-- overlays
+|   |   |       |   \-- raw
+|   |   |       |-- round_45
+|   |   |       |   |-- overlays
+|   |   |       |   \-- raw
+|   |   |       |-- round_5
+|   |   |       |   |-- overlays
+|   |   |       |   \-- raw
+|   |   |       \-- round_50
+|   |   |           |-- overlays
+|   |   |           \-- raw
+|   |   |-- exp04_roundwise_gradcam_iid_seed7
+|   |   |   \-- iid
+|   |   |       |-- round_0
+|   |   |       |   |-- overlays
+|   |   |       |   \-- raw
+|   |   |       |-- round_10
+|   |   |       |   |-- overlays
+|   |   |       |   \-- raw
+|   |   |       |-- round_20
+|   |   |       |   |-- overlays
+|   |   |       |   \-- raw
+|   |   |       |-- round_30
+|   |   |       |   |-- overlays
+|   |   |       |   \-- raw
+|   |   |       |-- round_5
+|   |   |       |   |-- overlays
+|   |   |       |   \-- raw
+|   |   |       \-- round_50
+|   |   |           |-- overlays
+|   |   |           \-- raw
+|   |   |-- exp04_roundwise_gradcam_noniid_sanity_seed42
+|   |   |   \-- non_iid_label_skew
+|   |   |       |-- round_0
+|   |   |       |   |-- overlays
+|   |   |       |   \-- raw
+|   |   |       \-- round_50
+|   |   |           |-- overlays
+|   |   |           \-- raw
+|   |   |-- exp04_roundwise_gradcam_noniid_seed123
+|   |   |   \-- non_iid_label_skew
+|   |   |       |-- round_0
+|   |   |       |   |-- overlays
+|   |   |       |   \-- raw
+|   |   |       |-- round_10
+|   |   |       |   |-- overlays
+|   |   |       |   \-- raw
+|   |   |       |-- round_20
+|   |   |       |   |-- overlays
+|   |   |       |   \-- raw
+|   |   |       |-- round_30
+|   |   |       |   |-- overlays
+|   |   |       |   \-- raw
+|   |   |       |-- round_5
+|   |   |       |   |-- overlays
+|   |   |       |   \-- raw
+|   |   |       \-- round_50
+|   |   |           |-- overlays
+|   |   |           \-- raw
+|   |   |-- exp04_roundwise_gradcam_noniid_seed42
+|   |   |   \-- non_iid_label_skew
+|   |   |       |-- round_0
+|   |   |       |   |-- overlays
+|   |   |       |   \-- raw
+|   |   |       |-- round_10
+|   |   |       |   |-- overlays
+|   |   |       |   \-- raw
+|   |   |       |-- round_15
+|   |   |       |   |-- overlays
+|   |   |       |   \-- raw
+|   |   |       |-- round_20
+|   |   |       |   |-- overlays
+|   |   |       |   \-- raw
+|   |   |       |-- round_25
+|   |   |       |   |-- overlays
+|   |   |       |   \-- raw
+|   |   |       |-- round_30
+|   |   |       |   |-- overlays
+|   |   |       |   \-- raw
+|   |   |       |-- round_35
+|   |   |       |   |-- overlays
+|   |   |       |   \-- raw
+|   |   |       |-- round_40
+|   |   |       |   |-- overlays
+|   |   |       |   \-- raw
+|   |   |       |-- round_45
+|   |   |       |   |-- overlays
+|   |   |       |   \-- raw
+|   |   |       |-- round_5
+|   |   |       |   |-- overlays
+|   |   |       |   \-- raw
+|   |   |       \-- round_50
+|   |   |           |-- overlays
+|   |   |           \-- raw
+|   |   |-- exp04_roundwise_gradcam_noniid_seed7
+|   |   |   \-- non_iid_label_skew
+|   |   |       |-- round_0
+|   |   |       |   |-- overlays
+|   |   |       |   \-- raw
+|   |   |       |-- round_10
+|   |   |       |   |-- overlays
+|   |   |       |   \-- raw
+|   |   |       |-- round_20
+|   |   |       |   |-- overlays
+|   |   |       |   \-- raw
+|   |   |       |-- round_30
+|   |   |       |   |-- overlays
+|   |   |       |   \-- raw
+|   |   |       |-- round_5
+|   |   |       |   |-- overlays
+|   |   |       |   \-- raw
+|   |   |       \-- round_50
+|   |   |           |-- overlays
+|   |   |           \-- raw
+|   |   |-- exp05_cross_model_gradcam_seed123
+|   |   |   \-- centralized
+|   |   |       |-- overlays
+|   |   |       \-- raw
+|   |   |-- exp05_cross_model_gradcam_seed42
+|   |   |   \-- centralized
+|   |   |       |-- overlays
+|   |   |       \-- raw
+|   |   \-- exp05_cross_model_gradcam_seed7
+|   |       \-- centralized
+|   |           |-- overlays
+|   |           \-- raw
+|   |-- logs
+|   |-- metrics
+|   |   |-- archive
+|   |   |   \-- exp02_original_valid_metrics.csv
+|   |   |-- debug_runpod_reproduce_kaggle_centralized_debug_gradcam_outputs.csv
+|   |   |-- debug_runpod_reproduce_kaggle_centralized_debug_metrics.csv
+|   |   |-- debug_runpod_reproduce_kaggle_flower_fedavg_debug_gradcam_outputs.csv
+|   |   |-- debug_runpod_reproduce_kaggle_flower_fedavg_debug_metrics.csv
+|   |   |-- exp01_centralized_vindr_binary_seed123_centralized_best_predictions.csv
+|   |   |-- exp01_centralized_vindr_binary_seed123_centralized_metrics.csv
+|   |   |-- exp01_centralized_vindr_binary_seed42_centralized_best_predictions.csv
+|   |   |-- exp01_centralized_vindr_binary_seed42_centralized_metrics.csv
+|   |   |-- exp01_centralized_vindr_binary_seed7_centralized_best_predictions.csv
+|   |   |-- exp01_centralized_vindr_binary_seed7_centralized_metrics.csv
+|   |   |-- exp01_exp02_exp03_predictive_performance_summary_seed42.csv
+|   |   |-- exp02_exp03_exp04_performance_xai_aligned_seed42.csv
+|   |   |-- exp02_fedavg_iid_5clients_5round_sanity_seed42_flower_fedavg_metrics.csv
+|   |   |-- exp02_fedavg_iid_5clients_seed123_flower_fedavg_metrics.csv
+|   |   |-- exp02_fedavg_iid_5clients_seed42_flower_fedavg_metrics.csv
+|   |   |-- exp02_fedavg_iid_5clients_seed7_flower_fedavg_metrics.csv
+|   |   |-- exp02_fedavg_iid_5clients_timing_seed42_flower_fedavg_metrics.csv
+|   |   |-- exp03_fedavg_noniid_5clients_5round_sanity_seed42_flower_fedavg_metrics.csv
+|   |   |-- exp03_fedavg_noniid_5clients_seed123_flower_fedavg_metrics.csv
+|   |   |-- exp03_fedavg_noniid_5clients_seed42_flower_fedavg_metrics.csv
+|   |   |-- exp03_fedavg_noniid_5clients_seed7_flower_fedavg_metrics.csv
+|   |   |-- exp04_roundwise_gradcam_iid_sanity_seed42_iid_round_0_gradcam_outputs.csv
+|   |   |-- exp04_roundwise_gradcam_iid_sanity_seed42_iid_round_50_gradcam_outputs.csv
+|   |   |-- exp04_roundwise_gradcam_iid_sanity_seed42_roundwise_gradcam_metadata.csv
+|   |   |-- exp04_roundwise_gradcam_iid_sanity_seed42_roundwise_xai_similarity.csv
+|   |   |-- exp04_roundwise_gradcam_iid_seed123_iid_round_0_gradcam_outputs.csv
+|   |   |-- exp04_roundwise_gradcam_iid_seed123_iid_round_10_gradcam_outputs.csv
+|   |   |-- exp04_roundwise_gradcam_iid_seed123_iid_round_20_gradcam_outputs.csv
+|   |   |-- exp04_roundwise_gradcam_iid_seed123_iid_round_30_gradcam_outputs.csv
+|   |   |-- exp04_roundwise_gradcam_iid_seed123_iid_round_5_gradcam_outputs.csv
+|   |   |-- exp04_roundwise_gradcam_iid_seed123_iid_round_50_gradcam_outputs.csv
+|   |   |-- exp04_roundwise_gradcam_iid_seed123_roundwise_gradcam_metadata.csv
+|   |   |-- exp04_roundwise_gradcam_iid_seed123_roundwise_xai_similarity.csv
+|   |   |-- exp04_roundwise_gradcam_iid_seed42_iid_round_0_gradcam_outputs.csv
+|   |   |-- exp04_roundwise_gradcam_iid_seed42_iid_round_10_gradcam_outputs.csv
+|   |   |-- exp04_roundwise_gradcam_iid_seed42_iid_round_15_gradcam_outputs.csv
+|   |   |-- exp04_roundwise_gradcam_iid_seed42_iid_round_20_gradcam_outputs.csv
+|   |   |-- exp04_roundwise_gradcam_iid_seed42_iid_round_25_gradcam_outputs.csv
+|   |   |-- exp04_roundwise_gradcam_iid_seed42_iid_round_30_gradcam_outputs.csv
+|   |   |-- exp04_roundwise_gradcam_iid_seed42_iid_round_35_gradcam_outputs.csv
+|   |   |-- exp04_roundwise_gradcam_iid_seed42_iid_round_40_gradcam_outputs.csv
+|   |   |-- exp04_roundwise_gradcam_iid_seed42_iid_round_45_gradcam_outputs.csv
+|   |   |-- exp04_roundwise_gradcam_iid_seed42_iid_round_5_gradcam_outputs.csv
+|   |   |-- exp04_roundwise_gradcam_iid_seed42_iid_round_50_gradcam_outputs.csv
+|   |   |-- exp04_roundwise_gradcam_iid_seed42_roundwise_gradcam_metadata.csv
+|   |   |-- exp04_roundwise_gradcam_iid_seed42_roundwise_xai_similarity.csv
+|   |   |-- exp04_roundwise_gradcam_iid_seed7_iid_round_0_gradcam_outputs.csv
+|   |   |-- exp04_roundwise_gradcam_iid_seed7_iid_round_10_gradcam_outputs.csv
+|   |   |-- exp04_roundwise_gradcam_iid_seed7_iid_round_20_gradcam_outputs.csv
+|   |   |-- exp04_roundwise_gradcam_iid_seed7_iid_round_30_gradcam_outputs.csv
+|   |   |-- exp04_roundwise_gradcam_iid_seed7_iid_round_5_gradcam_outputs.csv
+|   |   |-- exp04_roundwise_gradcam_iid_seed7_iid_round_50_gradcam_outputs.csv
+|   |   |-- exp04_roundwise_gradcam_iid_seed7_roundwise_gradcam_metadata.csv
+|   |   |-- exp04_roundwise_gradcam_iid_seed7_roundwise_xai_similarity.csv
+|   |   |-- exp04_roundwise_gradcam_noniid_sanity_seed42_non_iid_label_skew_round_0_gradcam_outputs.csv
+|   |   |-- exp04_roundwise_gradcam_noniid_sanity_seed42_non_iid_label_skew_round_50_gradcam_outputs.csv
+|   |   |-- exp04_roundwise_gradcam_noniid_sanity_seed42_roundwise_gradcam_metadata.csv
+|   |   |-- exp04_roundwise_gradcam_noniid_sanity_seed42_roundwise_xai_similarity.csv
+|   |   |-- exp04_roundwise_gradcam_noniid_seed123_non_iid_label_skew_round_0_gradcam_outputs.csv
+|   |   |-- exp04_roundwise_gradcam_noniid_seed123_non_iid_label_skew_round_10_gradcam_outputs.csv
+|   |   |-- exp04_roundwise_gradcam_noniid_seed123_non_iid_label_skew_round_20_gradcam_outputs.csv
+|   |   |-- exp04_roundwise_gradcam_noniid_seed123_non_iid_label_skew_round_30_gradcam_outputs.csv
+|   |   |-- exp04_roundwise_gradcam_noniid_seed123_non_iid_label_skew_round_5_gradcam_outputs.csv
+|   |   |-- exp04_roundwise_gradcam_noniid_seed123_non_iid_label_skew_round_50_gradcam_outputs.csv
+|   |   |-- exp04_roundwise_gradcam_noniid_seed123_roundwise_gradcam_metadata.csv
+|   |   |-- exp04_roundwise_gradcam_noniid_seed123_roundwise_xai_similarity.csv
+|   |   |-- exp04_roundwise_gradcam_noniid_seed42_non_iid_label_skew_round_0_gradcam_outputs.csv
+|   |   |-- exp04_roundwise_gradcam_noniid_seed42_non_iid_label_skew_round_10_gradcam_outputs.csv
+|   |   |-- exp04_roundwise_gradcam_noniid_seed42_non_iid_label_skew_round_15_gradcam_outputs.csv
+|   |   |-- exp04_roundwise_gradcam_noniid_seed42_non_iid_label_skew_round_20_gradcam_outputs.csv
+|   |   |-- exp04_roundwise_gradcam_noniid_seed42_non_iid_label_skew_round_25_gradcam_outputs.csv
+|   |   |-- exp04_roundwise_gradcam_noniid_seed42_non_iid_label_skew_round_30_gradcam_outputs.csv
+|   |   |-- exp04_roundwise_gradcam_noniid_seed42_non_iid_label_skew_round_35_gradcam_outputs.csv
+|   |   |-- exp04_roundwise_gradcam_noniid_seed42_non_iid_label_skew_round_40_gradcam_outputs.csv
+|   |   |-- exp04_roundwise_gradcam_noniid_seed42_non_iid_label_skew_round_45_gradcam_outputs.csv
+|   |   |-- exp04_roundwise_gradcam_noniid_seed42_non_iid_label_skew_round_5_gradcam_outputs.csv
+|   |   |-- exp04_roundwise_gradcam_noniid_seed42_non_iid_label_skew_round_50_gradcam_outputs.csv
+|   |   |-- exp04_roundwise_gradcam_noniid_seed42_roundwise_gradcam_metadata.csv
+|   |   |-- exp04_roundwise_gradcam_noniid_seed42_roundwise_xai_similarity.csv
+|   |   |-- exp04_roundwise_gradcam_noniid_seed7_non_iid_label_skew_round_0_gradcam_outputs.csv
+|   |   |-- exp04_roundwise_gradcam_noniid_seed7_non_iid_label_skew_round_10_gradcam_outputs.csv
+|   |   |-- exp04_roundwise_gradcam_noniid_seed7_non_iid_label_skew_round_20_gradcam_outputs.csv
+|   |   |-- exp04_roundwise_gradcam_noniid_seed7_non_iid_label_skew_round_30_gradcam_outputs.csv
+|   |   |-- exp04_roundwise_gradcam_noniid_seed7_non_iid_label_skew_round_5_gradcam_outputs.csv
+|   |   |-- exp04_roundwise_gradcam_noniid_seed7_non_iid_label_skew_round_50_gradcam_outputs.csv
+|   |   |-- exp04_roundwise_gradcam_noniid_seed7_roundwise_gradcam_metadata.csv
+|   |   |-- exp04_roundwise_gradcam_noniid_seed7_roundwise_xai_similarity.csv
+|   |   |-- exp04_roundwise_gradcam_stability_summary_seed42.csv
+|   |   |-- exp05_cross_model_gradcam_seed123_centralized_gradcam_outputs.csv
+|   |   |-- exp05_cross_model_gradcam_seed123_cross_model_gradcam_metadata.csv
+|   |   |-- exp05_cross_model_gradcam_seed123_cross_model_xai_similarity.csv
+|   |   |-- exp05_cross_model_gradcam_seed42_centralized_gradcam_outputs.csv
+|   |   |-- exp05_cross_model_gradcam_seed42_cross_model_gradcam_metadata.csv
+|   |   |-- exp05_cross_model_gradcam_seed42_cross_model_xai_similarity.csv
+|   |   |-- exp05_cross_model_gradcam_seed42_qualitative_candidates.csv
+|   |   |-- exp05_cross_model_gradcam_seed42_qualitative_figure_selection.csv
+|   |   |-- exp05_cross_model_gradcam_seed42_quantitative_summary.csv
+|   |   |-- exp05_cross_model_gradcam_seed7_centralized_gradcam_outputs.csv
+|   |   |-- exp05_cross_model_gradcam_seed7_cross_model_gradcam_metadata.csv
+|   |   |-- exp05_cross_model_gradcam_seed7_cross_model_xai_similarity.csv
+|   |   |-- seed42_official_artifact_manifest.csv
+|   |   \-- seed42_official_artifact_snapshot.txt
+|   |-- phase4_fig11_candidate
+|   |-- prototype_kaggle_degub
+|   |   |-- heatmaps
+|   |   |   |-- centralized_debug
+|   |   |   \-- flower_fedavg_debug
+|   |   \-- metrics
+|   |       |-- centralized_debug_metrics.csv
+|   |       |-- centralized_gradcam_outputs.csv
+|   |       |-- flower_fedavg_debug_metrics.csv
+|   |       \-- flower_fedavg_gradcam_outputs.csv
+|   \-- thesis_results
+|       |-- cross_model_xai
+|       |   |-- qualitative
+|       |   |   |-- exp05_cross_model_gradcam_seed42_qualitative_candidates.csv
+|       |   |   \-- exp05_cross_model_gradcam_seed42_qualitative_figure_selection.csv
+|       |   |-- cross_model_xai_artifact_catalog.md
+|       |   |-- cross_model_xai_artifact_manifest.csv
+|       |   |-- fig09_cross_model_gradcam_spatial_similarity.pdf
+|       |   |-- fig09_source_cross_model_gradcam_spatial_similarity.csv
+|       |   |-- fig10_cross_model_prediction_agreement_confidence.pdf
+|       |   |-- fig10_source_prediction_agreement_confidence.csv
+|       |   |-- table07_cross_model_similarity_by_seed.csv
+|       |   |-- table08_cross_model_similarity_three_seed_summary.csv
+|       |   \-- table09_qualitative_artifact_inventory.csv
+|       |-- integrated
+|       |   |-- qualitative
+|       |   |   |-- fig11_seed42_qualitative_gradcam_comparison.pdf
+|       |   |   |-- fig11_source_seed42_qualitative_candidates.csv
+|       |   |   |-- fig11_source_seed42_qualitative_selection_corrected.csv
+|       |   |   |-- fig11_source_seed42_qualitative_selection_with_confidences.csv
+|       |   |   \-- fig11_visual_specification.md
+|       |   |-- final_master_artifact_manifest.csv
+|       |   |-- final_provenance_snapshot.txt
+|       |   |-- integrated_evidence_catalog.md
+|       |   |-- table10_artifact_validation.csv
+|       |   |-- table11_qualitative_artifact_inventory.csv
+|       |   |-- table12_final_figure_catalog.csv
+|       |   \-- table13_cross_experiment_evidence_map.csv
+|       |-- predictive
+|       |   |-- fig01_final_f1_balanced_accuracy_three_seeds.pdf
+|       |   |-- fig01_source_final_f1_balanced_accuracy.csv
+|       |   |-- fig02_final_accuracy_auc_three_seeds.pdf
+|       |   |-- fig02_source_final_accuracy_auc.csv
+|       |   |-- fig03_best_round_and_final_f1_gap.pdf
+|       |   |-- fig03_source_best_round_and_final_f1.csv
+|       |   |-- fig04_iid_predictive_convergence.pdf
+|       |   |-- fig04_source_iid_predictive_convergence.csv
+|       |   |-- fig05_noniid_predictive_convergence.pdf
+|       |   |-- fig05_source_noniid_predictive_convergence.csv
+|       |   |-- predictive_artifact_catalog.md
+|       |   |-- predictive_artifact_manifest.csv
+|       |   |-- summary01_predictive_performance_results.md
+|       |   |-- table01_centralized_selected_checkpoint_by_seed.csv
+|       |   |-- table02_federated_best_and_final_by_seed.csv
+|       |   |-- table03_predictive_comparison_by_seed.csv
+|       |   \-- table04_predictive_comparison_three_seed_summary.csv
+|       |-- writing
+|       |   |-- discussion_chapter_evidence_outline.md
+|       |   |-- figure_caption_workbook.md
+|       |   |-- limitations_register.csv
+|       |   |-- README.md
+|       |   |-- research_question_answer_matrix.csv
+|       |   \-- results_chapter_evidence_outline.md
+|       \-- xai_stability
+|           |-- fig06_early_adjacent_gradcam_stability.pdf
+|           |-- fig06_source_early_adjacent_gradcam_stability.csv
+|           |-- fig07_gradcam_similarity_to_final.pdf
+|           |-- fig07_source_gradcam_similarity_to_final.csv
+|           |-- fig08_prediction_target_mismatch_to_final.pdf
+|           |-- fig08_source_prediction_target_mismatch_to_final.csv
+|           |-- table05_xai_stability_by_seed_and_round.csv
+|           |-- table06_xai_stability_three_seed_summary.csv
+|           |-- xai_stability_artifact_catalog.md
+|           \-- xai_stability_artifact_manifest.csv
+|-- src
+|   |-- analysis
+|   |   |-- __pycache__
+|   |   |   |-- build_integrated_thesis_results.cpython-313.pyc
+|   |   |   |-- build_thesis_writing_package.cpython-313.pyc
+|   |   |   \-- build_xai_stability_results.cpython-313.pyc
+|   |   |-- build_cross_model_xai_results.py
+|   |   |-- build_integrated_thesis_results.py
+|   |   |-- build_predictive_results.py
+|   |   |-- build_predictive_results_convergence.py
+|   |   |-- build_thesis_writing_package.py
+|   |   |-- build_xai_stability_results.py
+|   |   \-- build_xai_stability_results_visuals_updated.py
+|   |-- data
+|   |   |-- __pycache__
+|   |   |   |-- __init__.cpython-313.pyc
+|   |   |   |-- cache_vindr.cpython-313.pyc
+|   |   |   |-- datasets.cpython-313.pyc
+|   |   |   |-- preprocess_chexpert.cpython-313.pyc
+|   |   |   |-- preprocess_vindr.cpython-313.pyc
+|   |   |   \-- split_clients.cpython-313.pyc
+|   |   |-- __init__.py
+|   |   |-- cache_vindr.py
+|   |   |-- datasets.py
+|   |   |-- preprocess_vindr.py
+|   |   \-- split_clients.py
+|   |-- experiments
+|   |   |-- __pycache__
+|   |   |   |-- __init__.cpython-313.pyc
+|   |   |   |-- run_debug_reproduce_kaggle.cpython-313.pyc
+|   |   |   |-- run_exp01_centralized.cpython-313.pyc
+|   |   |   |-- run_exp02_fedavg.cpython-313.pyc
+|   |   |   |-- run_exp03_roundwise_xai.cpython-313.pyc
+|   |   |   |-- run_exp04_chexpert_validation.cpython-313.pyc
+|   |   |   |-- run_exp04_roundwise_xai.cpython-313.pyc
+|   |   |   \-- run_exp05_cross_model_xai.cpython-313.pyc
+|   |   |-- __init__.py
+|   |   |-- run_debug_reproduce_kaggle.py
+|   |   |-- run_exp01_centralized.py
+|   |   |-- run_exp02_fedavg.py
+|   |   |-- run_exp04_roundwise_xai.py
+|   |   \-- run_exp05_cross_model_xai.py
+|   |-- models
+|   |   |-- __pycache__
+|   |   |   |-- __init__.cpython-313.pyc
+|   |   |   \-- cnn.cpython-313.pyc
+|   |   |-- __init__.py
+|   |   \-- cnn.py
+|   |-- training
+|   |   |-- __pycache__
+|   |   |   |-- __init__.cpython-313.pyc
+|   |   |   |-- evaluate.cpython-313.pyc
+|   |   |   |-- train_centralized.cpython-313.pyc
+|   |   |   \-- train_flower_fedavg.cpython-313.pyc
+|   |   |-- __init__.py
+|   |   |-- evaluate.py
+|   |   |-- train_centralized.py
+|   |   \-- train_flower_fedavg.py
+|   |-- utils
+|   |   |-- __pycache__
+|   |   |   |-- __init__.cpython-313.pyc
+|   |   |   |-- logging.cpython-313.pyc
+|   |   |   |-- paths.cpython-313.pyc
+|   |   |   \-- seed.cpython-313.pyc
+|   |   |-- __init__.py
+|   |   |-- logging.py
+|   |   |-- paths.py
+|   |   \-- seed.py
+|   \-- xai
+|       |-- __pycache__
+|       |   |-- __init__.cpython-313.pyc
+|       |   |-- gradcam.cpython-313.pyc
+|       |   |-- lrp.cpython-313.pyc
+|       |   \-- xai_metrics.cpython-313.pyc
+|       |-- __init__.py
+|       |-- gradcam.py
+|       \-- xai_metrics.py
+|-- .gitignore
+|-- README.md
+|-- requirements.txt
+\-- verify_pod.py

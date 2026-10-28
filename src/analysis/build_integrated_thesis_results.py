@@ -431,7 +431,7 @@ def rebuild_qualitative_figure(
                     prediction_column,
                     confidence_column,
                 ),
-                fontsize=10,
+                fontsize=15,
                 pad=6,
             )
             for spine in ax.spines.values():
@@ -487,7 +487,7 @@ def rebuild_qualitative_figure(
         position = axes[row_index, 0].get_position()
         fig.text(
             0.055,
-            position.y1 + 0.024,
+            position.y1 + 0.034,
             f"{row_letters[row_index]}. {category}{true_label_text}",
             ha="left",
             va="bottom",
