@@ -2,15 +2,19 @@ from pathlib import Path
 import pandas as pd
 import pydicom
 
+# CSV is inside your project directory
 XAI_CSV = Path(
-    "/workspace/data/interim/"
+    "/workspace/thesis-fl-xai/data/interim/"
     "exp01_centralized_vindr_binary_seed42_xai_image_ids.csv"
 )
 
-# Correct absolute path to your DICOM data
+# DICOM data is outside your project directory
 DICOM_DIR = Path("/workspace/data/raw/vindr/train")
 
-OUTPUT_CSV = Path("/workspace/thesis-fl-xai/vindr_xai59_dicom_dimensions.csv")
+# Save results inside your project directory
+OUTPUT_CSV = Path(
+    "/workspace/thesis-fl-xai/data/interim/vindr_xai59_dicom_dimensions.csv"
+)
 
 xai = pd.read_csv(XAI_CSV)
 
