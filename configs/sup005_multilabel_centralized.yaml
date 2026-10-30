@@ -22,7 +22,7 @@ horizontal_flip: true
 rotation_degrees: 0.0
 threshold: 0.5
 class_weight_scope: global
-epochs: 10
+epochs: 50
 num_workers: 8
 fl_num_clients: 5
 fl_num_rounds: 50
