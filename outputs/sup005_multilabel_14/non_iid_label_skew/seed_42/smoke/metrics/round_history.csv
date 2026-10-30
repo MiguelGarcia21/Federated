@@ -1,0 +1,2 @@
+round,centralized_loss,macro_ap,macro_roc_auc,macro_f1,micro_ap,micro_f1,exact_match,no_finding_exact_match,num_no_finding_images,hamming_loss,num_valid_ap_classes,num_samples,threshold,num_validation_samples,fit_fit_runtime_seconds,fit_train_loss
+1,1.7551502734422684,0.2544666743031231,0.5137250147372276,0.18969153085078672,0.17968933728782194,0.25485436893203883,0.0,0.0,32.0,0.6852678571428571,13.0,64.0,0.5,64,0.2881809943364715,1.5511458762921393
