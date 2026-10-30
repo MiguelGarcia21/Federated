@@ -1,0 +1,36 @@
+# PROPOSAL ONLY: author places at configs/sup005_multilabel_centralized.yaml
+# Change absolute paths to match the actual RunPod workspace, if needed.
+project_root: /workspace/thesis-fl-xai
+output_dir: /workspace/thesis-fl-xai/outputs
+train_csv: /workspace/data/raw/vindr/train.csv
+train_image_dir: /workspace/data/raw/vindr/train
+canonical_train_split_path: /workspace/thesis-fl-xai/data/interim/exp01_centralized_vindr_binary_seed42_train_split.csv
+canonical_val_split_path: /workspace/thesis-fl-xai/data/interim/exp01_centralized_vindr_binary_seed42_val_split.csv
+task: vindr_multilabel_14
+condition: centralized
+model_name: resnet18
+pretrained: false
+num_classes: 14
+image_size: 224
+image_source: cache
+image_cache_dir: /workspace/thesis-fl-xai/data/processed/vindr_binary_224_png
+image_cache_extension: .png
+batch_size: 16
+learning_rate: 0.0001
+weight_decay: 0.01
+horizontal_flip: true
+rotation_degrees: 0.0
+threshold: 0.5
+class_weight_scope: global
+epochs: 10
+num_workers: 8
+fl_num_clients: 5
+fl_num_rounds: 50
+fl_local_epochs: 1
+fl_client_device: cuda
+fl_client_num_cpus: 2
+fl_client_num_gpus: 1.0
+fl_num_workers: 2
+save_initial_checkpoint: true
+save_checkpoints_every: 5
+non_iid_skew_strength: 4.0

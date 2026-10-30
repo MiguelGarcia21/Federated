@@ -1,0 +1,15 @@
+{
+  "seed": 42,
+  "target_class": 1,
+  "image_source": "cached_png",
+  "n_images": 59,
+  "metadata_sha256": {
+    "exp01_centralized_vindr_binary_seed42_xai_image_ids.csv": "b2c48e1006e7501b5c625f17cfdeaf485a9f5a16a7b2685ffe2825417f27fb94",
+    "train.csv": "d3c52e5b96a73b9263e535ee803dde7fd053e4c8c6a50faf6b00f7dd8f5e2a80",
+    "vindr_xai59_dicom_dimensions.csv": "ecb5f9eb47646fdff4479208a97b818fbe7728314b86335d0fd3b74a203679a6"
+  },
+  "thread_count": 4,
+  "metric_threshold": 0.5,
+  "source_cache": "C:\\Users\\migar\\Desktop\\Stuff\\thesis\\scp_bridge\\vindr_xai59_png",
+  "annotation_aggregation": "reader-union then reader-mean then image-mean"
+}
