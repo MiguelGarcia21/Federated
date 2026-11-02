@@ -428,3 +428,4 @@ FodyWeavers.xsd
 *.msm
 *.msp
 .venv/
+/sup005_iid_seed42_full.zip
