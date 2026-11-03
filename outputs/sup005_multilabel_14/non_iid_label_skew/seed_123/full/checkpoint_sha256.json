@@ -1,0 +1,13 @@
+{
+  "flower_fedavg_round_0.pt": "81a0102d2a64accd5b901737cfed481f6c55b74a0545db3f14096985f4ce4c75",
+  "flower_fedavg_round_10.pt": "f46e259059800c177d0c1f20a5ff2ae210befe91e371ee9f98249d7411b1587e",
+  "flower_fedavg_round_15.pt": "83984c19e763a0113aa45123f4ffbb9e7f2143c3d0a74f4c1c057e19f4b735c9",
+  "flower_fedavg_round_20.pt": "141d1c61754c22f91c2b4ee0dbe77046b0e7746e4c58947b8170685bea4aa5e4",
+  "flower_fedavg_round_25.pt": "51e22fd6ccd3a45e829bcb355e6959455a5ccb1d2b826a94d0753f5f205c7062",
+  "flower_fedavg_round_30.pt": "27a1ac08b4d43531ef613bcb0bf1e7b1b1ef21fbd036ce533edfb811cf421af2",
+  "flower_fedavg_round_35.pt": "fabc46abbc095965b7a045519c2ee18fc786aaec6949cd127f29b51614684097",
+  "flower_fedavg_round_40.pt": "26e058b2443c8917c1e84c957443173fdcffd26fd76f32bb44782362079a77d5",
+  "flower_fedavg_round_45.pt": "5f65121e5ab4a82da3ab4ec9b2921185d8e052c0906e7a79835f738760edba43",
+  "flower_fedavg_round_5.pt": "a317e1d041ee107f1b3a01bae071f2af437000fdad85220b7b55adb78db6529c",
+  "flower_fedavg_round_50.pt": "1be1c6dd5d1dc74517492eeb4bd2df0b1192b3c767da469552896e40584df98e"
+}

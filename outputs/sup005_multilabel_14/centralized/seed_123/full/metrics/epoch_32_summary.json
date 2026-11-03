@@ -1,0 +1,15 @@
+{
+  "macro_ap": 0.3772389100069469,
+  "macro_roc_auc": 0.8898673001810451,
+  "macro_f1": 0.39168242632416694,
+  "micro_ap": 0.5194992473868079,
+  "micro_f1": 0.5045912653975364,
+  "exact_match": 0.649,
+  "no_finding_exact_match": 0.8991041961338991,
+  "num_no_finding_images": 2121,
+  "hamming_loss": 0.10533333333333333,
+  "num_valid_ap_classes": 14,
+  "num_samples": 3000,
+  "threshold": 0.5,
+  "loss": 1.5981022753069798
+}

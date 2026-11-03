@@ -1,0 +1,6 @@
+client_id,split_type,num_images,normal,abnormal,positive_00,positive_01,positive_02,positive_03,positive_04,positive_05,positive_06,positive_07,positive_08,positive_09,positive_10,positive_11,positive_12,positive_13
+0,non_iid_label_skew,2996,2715,281,189,10,29,137,19,29,47,87,58,73,78,130,7,108
+1,non_iid_label_skew,2698,2206,492,333,25,43,267,39,36,65,144,93,130,103,214,17,173
+2,non_iid_label_skew,2400,1697,703,482,28,62,391,63,62,111,234,132,181,172,309,15,245
+3,non_iid_label_skew,2102,1188,914,626,37,101,459,74,74,119,278,179,224,204,410,16,335
+4,non_iid_label_skew,1804,679,1125,799,52,130,569,88,111,143,316,210,295,271,530,25,429
