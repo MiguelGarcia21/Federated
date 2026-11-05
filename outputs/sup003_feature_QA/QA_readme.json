@@ -1,0 +1,12 @@
+{
+  "status": "VISUAL_REVIEW_REQUIRED",
+  "n_images": 24,
+  "gamma_values": [
+    0.93,
+    1.14,
+    1.0,
+    0.86,
+    1.07
+  ],
+  "note": "Compare intensity/clipping CSV and inspect montage before training. No samples or labels were rewritten."
+}
