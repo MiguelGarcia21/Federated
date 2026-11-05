@@ -1,7 +1,3 @@
-"""SUP-003-only: controlled quantity partitions and training-time gamma profiles.
-
-New module: does not replace or mutate any original split/dataset code.
-"""
 from __future__ import annotations
 
 import hashlib
