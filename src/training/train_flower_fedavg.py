@@ -270,6 +270,34 @@ class VinDrFlowerClient(fl.client.NumPyClient):
             shuffle=True,
         )
 
+        # SUP-003 opt-in only. No change for historical configurations.
+        gamma_profile = config.get("sup003_gamma_by_client")
+        if gamma_profile is not None:
+            from torchvision import transforms as T
+            from src.data.sup003_heterogeneity import GammaTransform
+
+            if len(gamma_profile) != int(config["fl_num_clients"]):
+                raise ValueError("SUP003 gamma profile/client count mismatch")
+
+            original = self.train_loader.dataset.transform
+            if not isinstance(original, T.Compose) or not original.transforms:
+                raise TypeError("SUP003 expected a Compose training transform")
+
+            # Resize first, then gamma (PIL), then the original augmentations,
+            # ToTensor, and ImageNet Normalize. Validation remains unchanged.
+            self.train_loader.dataset.transform = T.Compose([
+                original.transforms[0],
+                GammaTransform(float(gamma_profile[self.client_id])),
+                *original.transforms[1:],
+            ])
+
+        local_class_counts = (
+            client_train_df["binary_label"]
+            .value_counts()
+            .sort_index()
+            .reindex([0, 1], fill_value=0)
+        )   
+
         local_class_counts = (
             client_train_df["binary_label"]
             .value_counts()
@@ -569,12 +597,44 @@ class SaveModelFedAvg(fl.server.strategy.FedAvg):
                 "save_checkpoints_every must be greater than zero."
             )
 
+    
     def aggregate_fit(
         self,
         server_round,
         results,
         failures,
     ):
+        # SUP-003 fail-closed participation audit, bypassed for original runs.
+        if "sup003_condition" in self.config:
+            import json
+            from src.data.sup003_heterogeneity import QUANTITY_SIZES
+
+            expected_n = int(self.config["fl_num_clients"])
+            if failures or len(results) != expected_n:
+                raise RuntimeError(
+                    f"SUP003 round {server_round}: incomplete client participation"
+                )
+
+            sample_sizes = sorted(int(fit.num_examples) for _, fit in results)
+            expected_sizes = sorted(
+                [2400] * 5 if self.config["sup003_condition"] == "feature_only"
+                else QUANTITY_SIZES
+            )
+
+            if sample_sizes != expected_sizes:
+                raise RuntimeError(
+                    f"SUP003 round {server_round}: sample sizes {sample_sizes}"
+                    f" != {expected_sizes}"
+                )
+
+            audit_path = self.checkpoint_dir / "sup003_fit_participation.jsonl"
+            with audit_path.open("a", encoding="utf-8") as handle:
+                handle.write(json.dumps({
+                    "round": int(server_round),
+                    "samples": sample_sizes,
+                    "client_cids": [str(proxy.cid) for proxy, _ in results],
+                }) + "\n")
+
         aggregated_parameters, aggregated_metrics = (
             super().aggregate_fit(
                 server_round,
@@ -590,6 +650,7 @@ class SaveModelFedAvg(fl.server.strategy.FedAvg):
             server_round % self.save_every == 0
             or server_round == self.total_rounds
         )
+
 
         if should_save:
             ndarrays = parameters_to_ndarrays(
