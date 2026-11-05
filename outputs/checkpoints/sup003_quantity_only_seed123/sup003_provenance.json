@@ -1,0 +1,19 @@
+{
+  "condition": "quantity_only",
+  "seed": 123,
+  "smoke": false,
+  "gamma_by_client": null,
+  "train_count": 12000,
+  "val_count": 3000,
+  "xai_id_count": 200,
+  "source_git_head": "fd1eaa8a3d7cbec565576ed308a50aad979925d4",
+  "source_sha256": {
+    "/workspace/thesis-fl-xai/data/interim/exp01_centralized_vindr_binary_seed42_train_split.csv": "567824e9ede86218fc10ef34e5e9d1b2a05fa6191444e7dff95c3091e91640cc",
+    "/workspace/thesis-fl-xai/data/interim/exp01_centralized_vindr_binary_seed42_val_split.csv": "e05f3cb73b85c5a0e020466bfeac7ec47f9717364b10c4804177a3a927c01214",
+    "configs/sup003_quantity_only_seed123.yaml": "a603685fc0530f402416b9167c4f504602e49aadd2f9b6043795ba45d85db862",
+    "/workspace/thesis-fl-xai/src/experiments/run_sup003_heterogeneity.py": "bb61ffb2fdc2828e48d5139be15c0abb68558f97ef0c8ba2eafd5a796ec209d8",
+    "/workspace/thesis-fl-xai/src/data/sup003_heterogeneity.py": "a2eb0c48b55e0b82c4b4be8d49e4241776de022a6d46bc5e283acb4a1268a709",
+    "/workspace/thesis-fl-xai/src/training/train_flower_fedavg.py": "abef37f54cd0f8517902d728fe262c2a9d1a5f0aa7d2036d82924c10b494fe73"
+  },
+  "torch_version": "2.14.1+cu130"
+}

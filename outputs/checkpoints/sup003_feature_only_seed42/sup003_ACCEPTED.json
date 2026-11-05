@@ -1,0 +1,6 @@
+{
+  "status": "PASS",
+  "experiment_id": "sup003_feature_only_seed42",
+  "final_round": 50,
+  "final_f1": 0.8643602416254805
+}
