@@ -194,9 +194,15 @@ def validate_config(config: Dict[str, Any]) -> None:
             "Binary VinDr classification requires num_classes=2."
         )
 
-    if str(config["fl_algorithm"]).lower() != "fedavg":
+    fl_algorithm = str(config["fl_algorithm"]).lower()
+    is_sup007_fedavgm = (
+        config.get("sup007_condition") == "fedavgm_full"
+        and fl_algorithm == "fedavgm"
+    )
+
+    if fl_algorithm != "fedavg" and not is_sup007_fedavgm:
         raise ValueError(
-            "The current federated runner supports only FedAvg."
+            "Only FedAvg is supported, except opt-in SUP007 FedAvgM."
         )
 
     split_type = str(config["split_type"]).lower()
