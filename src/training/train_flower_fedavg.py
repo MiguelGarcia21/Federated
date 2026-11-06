@@ -9,7 +9,7 @@ import pandas as pd
 import torch
 import torch.nn as nn
 import torch.optim as optim
-from flwr.common import parameters_to_ndarrays
+from flwr.common import FitIns, parameters_to_ndarrays
 from torch.utils.data import DataLoader
 
 from src.data.datasets import (
@@ -592,12 +592,58 @@ class SaveModelFedAvg(fl.server.strategy.FedAvg):
             )
         )
 
+        # SUP-007 audit state: no effect unless sup007_condition is provided.
+        self._sup007_expected_by_round = {}
+
         if self.save_every <= 0:
             raise ValueError(
                 "save_checkpoints_every must be greater than zero."
             )
 
     
+    def configure_fit(self, server_round, parameters, client_manager):
+        condition = self.config.get("sup007_condition")
+
+        if condition == "fedavg_partial":
+            # Wait for all five eligible clients: partial participation is not
+            # equivalent to simulating only three clients in total.
+            if not client_manager.wait_for(5, timeout=300):
+                raise RuntimeError("SUP007: five eligible clients unavailable")
+            available = client_manager.all()
+            if set(available) != {"0", "1", "2", "3", "4"}:
+                raise RuntimeError(
+                    f"SUP007 expected five canonical client IDs: {sorted(available)}"
+                )
+
+            seed = int(self.config["seed"])
+            order = np.random.default_rng(seed).permutation(5).tolist()
+            # Each client is selected exactly three times per five rounds;
+            # consequently, 30 times over the full 50-round schedule.
+            selected = [
+                str(order[((server_round - 1) * 3 + j) % 5])
+                for j in range(3)
+            ]
+            fit_settings = (
+                self.on_fit_config_fn(server_round)
+                if self.on_fit_config_fn is not None else {}
+            )
+            configured = [
+                (available[cid], FitIns(parameters, dict(fit_settings)))
+                for cid in selected
+            ]
+        else:
+            # Original algorithms continue using Flower's original sampler.
+            configured = super().configure_fit(
+                server_round, parameters, client_manager
+            )
+
+        if condition is not None:
+            self._sup007_expected_by_round[int(server_round)] = sorted(
+                str(proxy.cid) for proxy, _ in configured
+            )
+        return configured
+
+
     def aggregate_fit(
         self,
         server_round,
@@ -634,6 +680,44 @@ class SaveModelFedAvg(fl.server.strategy.FedAvg):
                     "samples": sample_sizes,
                     "client_cids": [str(proxy.cid) for proxy, _ in results],
                 }) + "\n")
+
+        if self.config.get("sup007_condition") is not None:
+            import json
+
+            condition = str(self.config["sup007_condition"])
+            n_expected = 3 if condition == "fedavg_partial" else 5
+            planned = self._sup007_expected_by_round.get(int(server_round))
+            actual = sorted(str(proxy.cid) for proxy, _ in results)
+            samples_by_cid = {
+                str(proxy.cid): int(fit.num_examples)
+                for proxy, fit in results
+            }
+            if (
+                failures or planned is None or len(results) != n_expected
+                or actual != planned or len(samples_by_cid) != n_expected
+                or any(n != 2400 for n in samples_by_cid.values())
+            ):
+                raise RuntimeError(
+                    f"SUP007 round {server_round} participation failure: "
+                    f"planned={planned}, actual={actual}, "
+                    f"samples={samples_by_cid}, failures={len(failures)}"
+                )
+            total = sum(samples_by_cid.values())
+            audit_path = self.checkpoint_dir / "sup007_fit_participation.jsonl"
+            with audit_path.open("a", encoding="utf-8") as out:
+                out.write(json.dumps({
+                    "round": int(server_round),
+                    "condition": condition,
+                    "planned_cids": planned,
+                    "actual_cids": actual,
+                    "samples_by_cid": samples_by_cid,
+                    "sample_total": total,
+                    "aggregation_weight_by_cid": {
+                        cid: n / total for cid, n in samples_by_cid.items()
+                    },
+                    "num_failures": 0,
+                }, sort_keys=True) + "\n")
+
 
         aggregated_parameters, aggregated_metrics = (
             super().aggregate_fit(
@@ -686,6 +770,16 @@ class SaveModelFedAvg(fl.server.strategy.FedAvg):
             )
 
         return aggregated_parameters, aggregated_metrics
+
+
+class SaveModelFedAvgM(SaveModelFedAvg, fl.server.strategy.FedAvgM):
+    """Opt-in Flower FedAvgM plus the existing checkpoint/audit methods.
+
+    Python MRO is SaveModelFedAvgM -> SaveModelFedAvg -> FedAvgM -> FedAvg.
+    Thus existing SaveModelFedAvg.aggregate_fit calls built-in FedAvgM.aggregate_fit.
+    """
+    pass
+
 
 
 def history_to_dataframe(history) -> pd.DataFrame:
@@ -1007,19 +1101,54 @@ def run_fedavg_debug(
         val_df=val_df,
     )
 
-    strategy = SaveModelFedAvg(
-        global_model=initial_global_model,
-        checkpoint_dir=checkpoint_dir,
-        config=config,
-        fraction_fit=1.0,
-        fraction_evaluate=0.0,
-        min_fit_clients=num_clients,
-        min_available_clients=num_clients,
-        initial_parameters=initial_parameters,
-        evaluate_fn=centralized_evaluate_fn,
-        on_fit_config_fn=fit_config,
-        fit_metrics_aggregation_fn=weighted_average,
-    )
+    sup007_condition = config.get("sup007_condition")
+    if sup007_condition is None:
+        strategy = SaveModelFedAvg(
+            global_model=initial_global_model,
+            checkpoint_dir=checkpoint_dir,
+            config=config,
+            fraction_fit=1.0,
+            fraction_evaluate=0.0,
+            min_fit_clients=num_clients,
+            min_available_clients=num_clients,
+            initial_parameters=initial_parameters,
+            evaluate_fn=centralized_evaluate_fn,
+            on_fit_config_fn=fit_config,
+            fit_metrics_aggregation_fn=weighted_average,
+        )
+    else:
+        if sup007_condition not in {"fedavgm_full", "fedavg_partial"}:
+            raise ValueError("Unknown SUP007 condition")
+        if num_clients != 5:
+            raise ValueError("SUP007 requires exactly 5 eligible clients")
+        partial = sup007_condition == "fedavg_partial"
+        strategy_type = SaveModelFedAvg if partial else SaveModelFedAvgM
+        strategy_options = dict(
+            global_model=initial_global_model,
+            checkpoint_dir=checkpoint_dir,
+            config=config,
+            fraction_fit=0.6 if partial else 1.0,
+            fraction_evaluate=0.0,
+            min_fit_clients=3 if partial else 5,
+            min_available_clients=5,
+            accept_failures=False,
+            initial_parameters=initial_parameters,
+            evaluate_fn=centralized_evaluate_fn,
+            on_fit_config_fn=fit_config,
+            fit_metrics_aggregation_fn=weighted_average,
+        )
+        if not partial:
+            strategy_options.update(
+                server_learning_rate=float(
+                    config["sup007_server_learning_rate"]
+                ),
+                server_momentum=float(config["sup007_server_momentum"]),
+            )
+        strategy = strategy_type(**strategy_options)
+        print(
+            "SUP007 strategy:", strategy_type.__name__,
+            "active clients:", 3 if partial else 5,
+        )
 
     client_resources = {
         "num_cpus": float(
@@ -1120,6 +1249,14 @@ def run_fedavg_debug(
         "fl_algorithm",
         "fedavg",
     )
+    if config.get("sup007_condition") is not None:
+        fl_metrics_df["sup007_condition"] = config["sup007_condition"]
+        fl_metrics_df["sup007_active_clients"] = int(
+            config["sup007_active_clients"]
+        )
+        fl_metrics_df["sup007_server_momentum"] = float(
+            config.get("sup007_server_momentum", 0.0)
+        )
     fl_metrics_df["local_epochs"] = local_epochs
     fl_metrics_df["fl_rounds"] = fl_rounds
     fl_metrics_df["batch_size"] = int(
