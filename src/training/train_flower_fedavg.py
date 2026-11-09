@@ -643,7 +643,9 @@ class SaveModelFedAvg(fl.server.strategy.FedAvg):
                 by_proxy = {}
                 for proxy in available.values():
                     response = proxy.get_properties(
-                        GetPropertiesIns(config={}), timeout=90
+                        GetPropertiesIns(config={}),
+                        timeout=90,
+                        group_id=server_round,
                     )
                     if response.status.code != Code.OK:
                         raise RuntimeError(
