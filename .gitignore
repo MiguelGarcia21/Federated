@@ -429,3 +429,6 @@ FodyWeavers.xsd
 *.msp
 .venv/
 /sup005_iid_seed42_full.zip
+
+# Model checkpoints
+*.pt
