@@ -79,6 +79,9 @@ def weighted_average(
     aggregated = {}
 
     for key in sorted(common_keys):
+        if key == "sup007_logical_client_id":
+            # Identifier metadata are categorical, not a metric to average.
+            continue
         aggregated[key] = float(
             sum(
                 num_examples * float(metric_dict[key])
@@ -360,6 +363,15 @@ class VinDrFlowerClient(fl.client.NumPyClient):
             device=self.device,
         )
 
+    def get_properties(self, config):
+        # SUP007: identify logical data partitions independently of Flower node IDs.
+        if self.config.get("sup007_condition") is None:
+            return {}
+        return {
+            "sup007_logical_client_id": int(self.client_id),
+            "sup007_train_samples": int(len(self.train_loader.dataset)),
+        }
+
     def get_parameters(self, config):
         return get_model_parameters(self.model)
 
@@ -432,6 +444,11 @@ class VinDrFlowerClient(fl.client.NumPyClient):
                 ),
                 "fit_runtime_seconds": float(
                     fit_runtime_seconds
+                ),
+                **(
+                    {"sup007_logical_client_id": int(self.client_id)}
+                    if self.config.get("sup007_condition") is not None
+                    else {}
                 ),
             },
         )
@@ -594,6 +611,9 @@ class SaveModelFedAvg(fl.server.strategy.FedAvg):
 
         # SUP-007 audit state: no effect unless sup007_condition is provided.
         self._sup007_expected_by_round = {}
+        self._sup007_expected_logical_by_round = {}
+        self._sup007_logical_by_proxy = {}
+        self._sup007_proxy_by_logical = {}
 
         if self.save_every <= 0:
             raise ValueError(
@@ -604,21 +624,64 @@ class SaveModelFedAvg(fl.server.strategy.FedAvg):
     def configure_fit(self, server_round, parameters, client_manager):
         condition = self.config.get("sup007_condition")
 
-        if condition == "fedavg_partial":
-            # Wait for all five eligible clients: partial participation is not
-            # equivalent to simulating only three clients in total.
+        if condition in {"fedavg_partial", "fedavgm_full"}:
+            # The five Flower transport node IDs are NOT the five logical
+            # VinDr client partition IDs. Resolve the mapping once via
+            # each client's explicit properties, then validate each round.
             if not client_manager.wait_for(5, timeout=300):
                 raise RuntimeError("SUP007: five eligible clients unavailable")
             available = client_manager.all()
-            if set(available) != {"0", "1", "2", "3", "4"}:
+            if len(available) != 5:
                 raise RuntimeError(
-                    f"SUP007 expected five canonical client IDs: {sorted(available)}"
+                    f"SUP007 expected five Flower nodes, got {len(available)}"
                 )
 
+            if not self._sup007_proxy_by_logical:
+                from flwr.common import Code, GetPropertiesIns
+
+                by_logical = {}
+                by_proxy = {}
+                for proxy in available.values():
+                    response = proxy.get_properties(
+                        GetPropertiesIns(config={}), timeout=90
+                    )
+                    if response.status.code != Code.OK:
+                        raise RuntimeError(
+                            f"SUP007 node {proxy.cid} did not return properties"
+                        )
+                    props = response.properties
+                    try:
+                        logical_id = str(int(props["sup007_logical_client_id"]))
+                        num_samples = int(props["sup007_train_samples"])
+                    except (KeyError, TypeError, ValueError) as exc:
+                        raise RuntimeError(
+                            f"SUP007 node {proxy.cid} missing valid partition identity"
+                        ) from exc
+                    if logical_id not in {"0", "1", "2", "3", "4"}:
+                        raise RuntimeError(f"SUP007 invalid logical ID {logical_id}")
+                    if num_samples != 2400:
+                        raise RuntimeError(
+                            f"SUP007 logical client {logical_id}: {num_samples} != 2400"
+                        )
+                    if logical_id in by_logical or str(proxy.cid) in by_proxy:
+                        raise RuntimeError("SUP007 duplicated logical/node identity")
+                    by_logical[logical_id] = proxy
+                    by_proxy[str(proxy.cid)] = logical_id
+
+                if set(by_logical) != {"0", "1", "2", "3", "4"}:
+                    raise RuntimeError("SUP007 cannot map all five data partitions")
+                self._sup007_proxy_by_logical = by_logical
+                self._sup007_logical_by_proxy = by_proxy
+                print("SUP007 verified node->partition map:", by_proxy)
+
+            # A node replacement/remapping invalidates the established schedule.
+            if set(available) != set(self._sup007_logical_by_proxy):
+                raise RuntimeError("SUP007 Flower node membership changed mid-run")
+
+        if condition == "fedavg_partial":
             seed = int(self.config["seed"])
             order = np.random.default_rng(seed).permutation(5).tolist()
-            # Each client is selected exactly three times per five rounds;
-            # consequently, 30 times over the full 50-round schedule.
+            # In 50 rounds, each logical partition is chosen 30 times.
             selected = [
                 str(order[((server_round - 1) * 3 + j) % 5])
                 for j in range(3)
@@ -628,11 +691,14 @@ class SaveModelFedAvg(fl.server.strategy.FedAvg):
                 if self.on_fit_config_fn is not None else {}
             )
             configured = [
-                (available[cid], FitIns(parameters, dict(fit_settings)))
-                for cid in selected
+                (
+                    self._sup007_proxy_by_logical[logical_id],
+                    FitIns(parameters, dict(fit_settings)),
+                )
+                for logical_id in selected
             ]
         else:
-            # Original algorithms continue using Flower's original sampler.
+            # Historical runs and SUP007 full-client FedAvgM use Flower sampler.
             configured = super().configure_fit(
                 server_round, parameters, client_manager
             )
@@ -640,6 +706,10 @@ class SaveModelFedAvg(fl.server.strategy.FedAvg):
         if condition is not None:
             self._sup007_expected_by_round[int(server_round)] = sorted(
                 str(proxy.cid) for proxy, _ in configured
+            )
+            self._sup007_expected_logical_by_round[int(server_round)] = sorted(
+                self._sup007_logical_by_proxy[str(proxy.cid)]
+                for proxy, _ in configured
             )
         return configured
 
@@ -687,19 +757,41 @@ class SaveModelFedAvg(fl.server.strategy.FedAvg):
             condition = str(self.config["sup007_condition"])
             n_expected = 3 if condition == "fedavg_partial" else 5
             planned = self._sup007_expected_by_round.get(int(server_round))
+            planned_logical = self._sup007_expected_logical_by_round.get(
+                int(server_round)
+            )
             actual = sorted(str(proxy.cid) for proxy, _ in results)
             samples_by_cid = {
                 str(proxy.cid): int(fit.num_examples)
                 for proxy, fit in results
             }
+            try:
+                logical_by_cid = {
+                    str(proxy.cid): str(int(fit.metrics["sup007_logical_client_id"]))
+                    for proxy, fit in results
+                }
+            except (KeyError, TypeError, ValueError) as exc:
+                raise RuntimeError(
+                    f"SUP007 round {server_round}: missing actual logical client IDs"
+                ) from exc
+            actual_logical = sorted(logical_by_cid.values())
+            mapping_ok = all(
+                self._sup007_logical_by_proxy.get(cid) == logical_id
+                for cid, logical_id in logical_by_cid.items()
+            )
             if (
-                failures or planned is None or len(results) != n_expected
-                or actual != planned or len(samples_by_cid) != n_expected
+                failures or planned is None or planned_logical is None
+                or len(results) != n_expected or actual != planned
+                or actual_logical != planned_logical
+                or len(set(actual_logical)) != n_expected
+                or not mapping_ok or len(samples_by_cid) != n_expected
                 or any(n != 2400 for n in samples_by_cid.values())
             ):
                 raise RuntimeError(
                     f"SUP007 round {server_round} participation failure: "
-                    f"planned={planned}, actual={actual}, "
+                    f"planned_nodes={planned}, actual_nodes={actual}, "
+                    f"planned_partitions={planned_logical}, "
+                    f"actual_partitions={actual_logical}, "
                     f"samples={samples_by_cid}, failures={len(failures)}"
                 )
             total = sum(samples_by_cid.values())
@@ -710,6 +802,9 @@ class SaveModelFedAvg(fl.server.strategy.FedAvg):
                     "condition": condition,
                     "planned_cids": planned,
                     "actual_cids": actual,
+                    "planned_logical_client_ids": planned_logical,
+                    "actual_logical_client_ids": actual_logical,
+                    "logical_client_by_proxy": logical_by_cid,
                     "samples_by_cid": samples_by_cid,
                     "sample_total": total,
                     "aggregation_weight_by_cid": {

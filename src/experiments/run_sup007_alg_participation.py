@@ -235,14 +235,23 @@ def run(config_path: Path, smoke: bool) -> None:
     n = int(config["sup007_active_clients"])
     usage = {str(i): 0 for i in range(5)}
     for x in fit_rows:
+        planned_logical = x.get("planned_logical_client_ids", [])
+        actual_logical = x.get("actual_logical_client_ids", [])
+        logical_by_proxy = x.get("logical_client_by_proxy", {})
         if (len(x["actual_cids"]) != n
                 or len(set(x["actual_cids"])) != n
                 or x["actual_cids"] != x["planned_cids"]
+                or len(actual_logical) != n
+                or len(set(actual_logical)) != n
+                or actual_logical != planned_logical
+                or set(actual_logical) - set(usage)
+                or set(logical_by_proxy) != set(x["actual_cids"])
+                or sorted(logical_by_proxy.values()) != actual_logical
                 or x["sample_total"] != 2400*n
                 or x["num_failures"] != 0):
             raise AssertionError(f"SUP007 participation invalid round {x['round']}")
-        for cid in x["actual_cids"]:
-            usage[cid] += 1
+        for logical_id in actual_logical:
+            usage[logical_id] += 1
     if config["sup007_condition"] == "fedavg_partial" and rounds == 50:
         if set(usage.values()) != {30}:
             raise AssertionError(f"SUP007 partial schedule imbalance {usage}")
