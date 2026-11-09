@@ -730,6 +730,15 @@ class SaveModelFedAvg(fl.server.strategy.FedAvg):
         if aggregated_parameters is None:
             return aggregated_parameters, aggregated_metrics
 
+        # SUP-007 FedAvgM only: keep server momentum on trainable weights,
+        # but use ordinary weighted aggregation for non-trainable state.
+        if self.config.get("sup007_condition") == "fedavgm_full":
+            aggregated_parameters = self._sup007_restore_nontrainable_state(
+                server_round=server_round,
+                results=results,
+                aggregated_parameters=aggregated_parameters,
+            )
+
         should_save = (
             server_round % self.save_every == 0
             or server_round == self.total_rounds
@@ -773,12 +782,88 @@ class SaveModelFedAvg(fl.server.strategy.FedAvg):
 
 
 class SaveModelFedAvgM(SaveModelFedAvg, fl.server.strategy.FedAvgM):
-    """Opt-in Flower FedAvgM plus the existing checkpoint/audit methods.
+    """Opt-in FedAvgM with ordinary aggregation of non-trainable buffers.
 
-    Python MRO is SaveModelFedAvgM -> SaveModelFedAvg -> FedAvgM -> FedAvg.
-    Thus existing SaveModelFedAvg.aggregate_fit calls built-in FedAvgM.aggregate_fit.
+    MRO: SaveModelFedAvgM -> SaveModelFedAvg -> FedAvgM -> FedAvg.
+    SaveModelFedAvg calls Flower's FedAvgM first. Before saving or
+    returning the global parameters, the SUP-007 hook corrects buffers.
     """
-    pass
+
+    def _sup007_restore_nontrainable_state(
+        self,
+        server_round,
+        results,
+        aggregated_parameters,
+    ):
+        from flwr.common import bytes_to_ndarray, ndarrays_to_parameters
+
+        state_dict = self.global_model.state_dict()
+        names = list(state_dict.keys())
+        trainable = {
+            name for name, parameter in self.global_model.named_parameters()
+            if parameter.requires_grad
+        }
+        arrays = parameters_to_ndarrays(aggregated_parameters)
+
+        if len(arrays) != len(names):
+            raise RuntimeError("SUP007 FedAvgM: model state length mismatch")
+        if self.momentum_vector is None or len(self.momentum_vector) != len(names):
+            raise RuntimeError("SUP007 FedAvgM: missing server momentum state")
+
+        total_examples = sum(int(fit.num_examples) for _, fit in results)
+        if total_examples <= 0:
+            raise RuntimeError("SUP007 FedAvgM: no valid client samples")
+        for _, fit in results:
+            if int(fit.num_examples) <= 0 or len(fit.parameters.tensors) != len(names):
+                raise RuntimeError("SUP007 FedAvgM: invalid client state")
+
+        for idx, name in enumerate(names):
+            reference = state_dict[name].detach().cpu().numpy()
+            if arrays[idx].shape != reference.shape:
+                raise RuntimeError(f"SUP007 FedAvgM: shape mismatch for {name}")
+
+            if name in trainable:
+                if not np.isfinite(arrays[idx]).all():
+                    raise RuntimeError(f"SUP007 FedAvgM: nonfinite weight {name}")
+                continue
+
+            # Weighted averaging follows the original FedAvg state-dict
+            # convention; only trainable weights receive server momentum.
+            mean_value = np.zeros(reference.shape, dtype=np.float64)
+            for _, fit in results:
+                client_value = bytes_to_ndarray(fit.parameters.tensors[idx])
+                if client_value.shape != reference.shape:
+                    raise RuntimeError(f"SUP007 FedAvgM: client shape mismatch for {name}")
+                if not np.isfinite(client_value).all():
+                    raise RuntimeError(f"SUP007 FedAvgM: nonfinite client buffer {name}")
+                if name.endswith("running_var") and np.any(client_value < 0):
+                    raise RuntimeError(f"SUP007 FedAvgM: negative client variance {name}")
+                mean_value += (
+                    client_value.astype(np.float64)
+                    * (int(fit.num_examples) / total_examples)
+                )
+
+            if np.issubdtype(reference.dtype, np.integer):
+                mean_value = np.rint(mean_value)
+            corrected = mean_value.astype(reference.dtype)
+            if not np.isfinite(corrected).all():
+                raise RuntimeError(f"SUP007 FedAvgM: nonfinite averaged buffer {name}")
+            if name.endswith("running_var") and np.any(corrected < 0):
+                raise RuntimeError(f"SUP007 FedAvgM: negative averaged variance {name}")
+
+            arrays[idx] = corrected
+            # Eliminate momentum history for buffers as well as the
+            # current buffer update; preserve trainable momentum unchanged.
+            self.momentum_vector[idx] = np.zeros_like(self.momentum_vector[idx])
+
+        # Flower's FedAvgM stores current server state in initial_parameters.
+        # Update it before the existing checkpoint logic and next round.
+        self.initial_parameters = ndarrays_to_parameters(arrays)
+        print(
+            f"SUP007 FedAvgM Round {server_round}: "
+            "non-trainable buffers averaged without momentum"
+        )
+        return self.initial_parameters
 
 
 
