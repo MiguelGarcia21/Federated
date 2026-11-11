@@ -1,0 +1,18 @@
+{
+  "result": "PASS",
+  "yaml_count": 6,
+  "cases": [
+    "IID: PASS(exact five clients)",
+    "IID missing client: PASS(expected rejection)",
+    "IID duplicate logical partition: PASS(expected rejection)",
+    "IID wrong sample count: PASS(expected rejection)",
+    "IID Flower reported failure: PASS(expected rejection)",
+    "IID proxy identity mismatch: PASS(expected rejection)",
+    "NONIID: PASS(exact five clients)",
+    "NONIID missing client: PASS(expected rejection)",
+    "NONIID duplicate logical partition: PASS(expected rejection)",
+    "NONIID wrong sample count: PASS(expected rejection)",
+    "NONIID Flower reported failure: PASS(expected rejection)",
+    "NONIID proxy identity mismatch: PASS(expected rejection)"
+  ]
+}

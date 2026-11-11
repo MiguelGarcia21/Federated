@@ -79,7 +79,7 @@ def weighted_average(
     aggregated = {}
 
     for key in sorted(common_keys):
-        if key == "sup007_logical_client_id":
+        if key in {"sup007_logical_client_id", "sup008_logical_client_id"}:
             # Identifier metadata are categorical, not a metric to average.
             continue
         aggregated[key] = float(
@@ -364,6 +364,11 @@ class VinDrFlowerClient(fl.client.NumPyClient):
         )
 
     def get_properties(self, config):
+        if bool(self.config.get("sup008_audit", False)):
+            return {
+                "sup008_logical_client_id": int(self.client_id),
+                "sup008_train_samples": int(len(self.train_loader.dataset)),
+            }
         # SUP007: identify logical data partitions independently of Flower node IDs.
         if self.config.get("sup007_condition") is None:
             return {}
@@ -448,6 +453,11 @@ class VinDrFlowerClient(fl.client.NumPyClient):
                 **(
                     {"sup007_logical_client_id": int(self.client_id)}
                     if self.config.get("sup007_condition") is not None
+                    else {}
+                ),
+                **(
+                    {"sup008_logical_client_id": int(self.client_id)}
+                    if bool(self.config.get("sup008_audit", False))
                     else {}
                 ),
             },
@@ -586,6 +596,7 @@ class SaveModelFedAvg(fl.server.strategy.FedAvg):
         checkpoint_dir: Path,
         config: Dict[str, Any],
         *args,
+        sup008_expected_sizes: Dict[int, int] | None = None,
         **kwargs,
     ):
         super().__init__(*args, **kwargs)
@@ -615,6 +626,25 @@ class SaveModelFedAvg(fl.server.strategy.FedAvg):
         self._sup007_logical_by_proxy = {}
         self._sup007_proxy_by_logical = {}
 
+        # Separate SUP-008 audit; inactive for every historical and SUP-007 run.
+        self._sup008_enabled = bool(config.get("sup008_audit", False))
+        self._sup008_expected_sizes = {
+            int(k): int(v) for k, v in (sup008_expected_sizes or {}).items()
+        }
+        self._sup008_proxy_to_logical = {}
+        self._sup008_planned_by_round = {}
+        if self._sup008_enabled:
+            if any(k in config for k in (
+                "sup003_condition", "sup003_gamma_by_client", "sup007_condition",
+            )):
+                raise ValueError("SUP008: incompatible supplementary opt-ins")
+            if (int(config["fl_num_clients"]) != 5
+                    or int(config["fl_num_rounds"]) != 50
+                    or set(self._sup008_expected_sizes) != set(range(5))
+                    or sum(self._sup008_expected_sizes.values()) != 12000
+                    or any(n <= 0 for n in self._sup008_expected_sizes.values())):
+                raise ValueError("SUP008: invalid five-client/full-run contract")
+
         if self.save_every <= 0:
             raise ValueError(
                 "save_checkpoints_every must be greater than zero."
@@ -623,6 +653,41 @@ class SaveModelFedAvg(fl.server.strategy.FedAvg):
     
     def configure_fit(self, server_round, parameters, client_manager):
         condition = self.config.get("sup007_condition")
+
+        if self._sup008_enabled:
+            from flwr.common import Code, GetPropertiesIns
+
+            if not client_manager.wait_for(5, timeout=300):
+                raise RuntimeError("SUP008: five Flower nodes unavailable")
+            available = client_manager.all()
+            if len(available) != 5:
+                raise RuntimeError("SUP008: expected exactly five Flower nodes")
+            if not self._sup008_proxy_to_logical:
+                mapped = {}
+                seen_logical = set()
+                for proxy in available.values():
+                    response = proxy.get_properties(
+                        GetPropertiesIns(config={}), timeout=90,
+                        group_id=server_round,
+                    )
+                    if response.status.code != Code.OK:
+                        raise RuntimeError("SUP008: get_properties failed")
+                    try:
+                        logical = int(response.properties["sup008_logical_client_id"])
+                        count = int(response.properties["sup008_train_samples"])
+                    except (KeyError, ValueError, TypeError) as exc:
+                        raise RuntimeError("SUP008: invalid logical client properties") from exc
+                    if (logical not in self._sup008_expected_sizes
+                            or logical in seen_logical
+                            or count != self._sup008_expected_sizes[logical]):
+                        raise RuntimeError("SUP008: client properties/partition mismatch")
+                    mapped[str(proxy.cid)] = logical
+                    seen_logical.add(logical)
+                if set(mapped.values()) != set(range(5)):
+                    raise RuntimeError("SUP008: not all five logical clients mapped")
+                self._sup008_proxy_to_logical = mapped
+            elif set(available) != set(self._sup008_proxy_to_logical):
+                raise RuntimeError("SUP008: Flower node membership changed")
 
         if condition in {"fedavg_partial", "fedavgm_full"}:
             # The five Flower transport node IDs are NOT the five logical
@@ -705,6 +770,16 @@ class SaveModelFedAvg(fl.server.strategy.FedAvg):
                 server_round, parameters, client_manager
             )
 
+        if self._sup008_enabled:
+            planned = {
+                str(proxy.cid): self._sup008_proxy_to_logical[str(proxy.cid)]
+                for proxy, _ in configured
+            }
+            if (len(planned) != 5 or set(planned.values()) != set(range(5))
+                    or set(planned) != set(self._sup008_proxy_to_logical)):
+                raise RuntimeError("SUP008: configured fit does not cover five clients")
+            self._sup008_planned_by_round[int(server_round)] = planned
+
         if condition is not None:
             self._sup007_expected_by_round[int(server_round)] = sorted(
                 str(proxy.cid) for proxy, _ in configured
@@ -722,6 +797,7 @@ class SaveModelFedAvg(fl.server.strategy.FedAvg):
         results,
         failures,
     ):
+        sup008_record = None
         # SUP-003 fail-closed participation audit, bypassed for original runs.
         if "sup003_condition" in self.config:
             import json
@@ -816,6 +892,23 @@ class SaveModelFedAvg(fl.server.strategy.FedAvg):
                 }, sort_keys=True) + "\n")
 
 
+        if self._sup008_enabled:
+            from src.training.sup008_participation import validate_sup008_round
+
+            planned = self._sup008_planned_by_round.get(int(server_round), {})
+            raw_results = [{
+                "cid": str(proxy.cid),
+                "logical_client_id": fit.metrics.get("sup008_logical_client_id"),
+                "num_examples": fit.num_examples,
+            } for proxy, fit in results]
+            sup008_record = validate_sup008_round(
+                server_round=int(server_round),
+                expected_sizes=self._sup008_expected_sizes,
+                planned_by_proxy=planned,
+                results=raw_results,
+                failures_count=len(failures),
+            )
+
         aggregated_parameters, aggregated_metrics = (
             super().aggregate_fit(
                 server_round,
@@ -825,6 +918,8 @@ class SaveModelFedAvg(fl.server.strategy.FedAvg):
         )
 
         if aggregated_parameters is None:
+            if self._sup008_enabled:
+                raise RuntimeError("SUP008: valid round failed to aggregate")
             return aggregated_parameters, aggregated_metrics
 
         # SUP-007 FedAvgM only: keep server momentum on trainable weights,
@@ -874,6 +969,12 @@ class SaveModelFedAvg(fl.server.strategy.FedAvg):
             print(
                 f"Saved FL checkpoint: {checkpoint_path}"
             )
+
+        if sup008_record is not None:
+            import json
+            audit_path = self.checkpoint_dir / "sup008_fit_participation.jsonl"
+            with audit_path.open("a", encoding="utf-8") as handle:
+                handle.write(json.dumps(sup008_record, sort_keys=True) + "\n")
 
         return aggregated_parameters, aggregated_metrics
 
@@ -1285,6 +1386,14 @@ def run_fedavg_debug(
 
     sup007_condition = config.get("sup007_condition")
     if sup007_condition is None:
+        sup008_options = {}
+        if bool(config.get("sup008_audit", False)):
+            sup008_options = {
+                "sup008_expected_sizes": {
+                    i: len(df) for i, df in enumerate(client_dfs)
+                },
+                "accept_failures": False,
+            }
         strategy = SaveModelFedAvg(
             global_model=initial_global_model,
             checkpoint_dir=checkpoint_dir,
@@ -1297,6 +1406,7 @@ def run_fedavg_debug(
             evaluate_fn=centralized_evaluate_fn,
             on_fit_config_fn=fit_config,
             fit_metrics_aggregation_fn=weighted_average,
+            **sup008_options,
         )
     else:
         if sup007_condition not in {"fedavgm_full", "fedavg_partial"}:
