@@ -1,0 +1,10 @@
+{
+  "experiment_id": "g4_sup008_iid_seed31415",
+  "seed": 31415,
+  "checkpoint_sha256": "fedfe373457dcd8becef698bb92bdde906543823a3df2d72355f841da5375f7c",
+  "predictions_sha256": "c28f8c94b411bf1187c2c88c154edb1961d437036843b99c1ed39ea86a6dd996",
+  "rounds": 50,
+  "n_predictions": 3000,
+  "original_exporter_status": "PASS",
+  "qa_status": "PASS"
+}

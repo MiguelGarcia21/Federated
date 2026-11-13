@@ -1,0 +1,10 @@
+{
+  "experiment_id": "g4_sup008_noniid_label_skew_seed2026",
+  "seed": 2026,
+  "checkpoint_sha256": "995e07e0b1c23578d5ce46faf689356baf61c6a517c0c9f72a4cc0b23ff7378f",
+  "predictions_sha256": "691ca7076bb397c35b91715298bddbbfc1d6b854dd31756527543bdafb837188",
+  "rounds": 50,
+  "n_predictions": 3000,
+  "original_exporter_status": "PASS",
+  "qa_status": "PASS"
+}
