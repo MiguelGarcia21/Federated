@@ -1,0 +1,38 @@
+{
+  "disposition": "AP_TOLERANCE_EXCEPTION_APPROVED_FOR_IID_SEED2026",
+  "scope": "one existing checkpoint, seed 2026, IID, average_precision ONLY",
+  "exception_policy_authority": "Master Coordinator decision 2026-11-12",
+  "master_evidence_acceptance": "PENDING_SEPARATE_REVIEW",
+  "stage2_gpu_execution_authorized": false,
+  "original_exporter_status": "FAILED_CLOSED",
+  "average_precision_standard_gate": "FAIL",
+  "AP_delta": 1.4673371695139714e-05,
+  "AP_standard_tolerance": 1e-05,
+  "core_metric_tolerance": 1e-05,
+  "loss_tolerance": 0.0001,
+  "actual_loss_delta": 1.3721122848753264e-05,
+  "core_metric_deltas": {
+    "f1": 0.0,
+    "accuracy": 1.1102230246251565e-16,
+    "balanced_accuracy": 0.0,
+    "auc": 8.045660735422899e-07
+  },
+  "supplemental_qa": "PASS",
+  "experiment_id": "g4_sup008_iid_seed2026",
+  "seed": 2026,
+  "round": 50,
+  "n_predictions": 3000,
+  "confusion": {
+    "tn": 1989,
+    "fp": 132,
+    "fn": 107,
+    "tp": 772
+  },
+  "git_revision": "20969563229de10f4d65f1172c3389e0b86b169c",
+  "training_checkpoint_sha256": "ec135384825002d67dec9f18f40cadcb103941927aa276d061ac3ed6e250bd27",
+  "supplemental_predictions_sha256": "deb423357e89683bc9a2db34a6a737f27d8c41ab044ebf747e02a19f0e1a9af5",
+  "supplemental_reconciliation_sha256": "bcc268242daa8f72ff25e5bc19be5fec6fa54b7b20ced7ea4a02a9a2a5840177",
+  "original_exporter_log_sha256": "2c4c3480c5c9c37ef5a7a393e1c5852cae7850276f71faf9943e4f27856898b2",
+  "original_exporter_qa_report": "NOT_CREATED",
+  "note": "Narrow policy exception; AP comparison remains FAIL, original exporter remains FAILED_CLOSED. Does not authorize Stage-2 GPU. New runs must pass original exporter unchanged."
+}

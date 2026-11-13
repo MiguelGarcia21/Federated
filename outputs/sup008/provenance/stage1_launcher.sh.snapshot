@@ -1,0 +1,80 @@
+#!/usr/bin/env bash
+# SUP-008 Stage 1 only: centralized 2026, centralized 31415, IID 2026.
+# Approved per Master 2026-11-12. Mandatory operator/G4 HOLD after IID seed 2026.
+set -Eeuo pipefail
+export PYTHONUNBUFFERED=1
+ROOT=/workspace/thesis-fl-xai
+OPS=$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)
+OUT=$ROOT/outputs/sup008
+cd "$ROOT"
+
+# A failed preflight must not create or alter the experimental output directory.
+python "$OPS/sup008_stage1_gate.py" preflight
+[[ ! -e "$OUT" ]] || { echo 'STOP: output directory collision'; exit 1; }
+mkdir -p "$OUT/logs" "$OUT/provenance"
+ATTEMPT_ID="SUP008_STAGE1_$(date -u +%Y%m%dT%H%M%SZ)_$(git rev-parse --short HEAD)"
+printf '%s\n' "$ATTEMPT_ID" > "$OUT/provenance/attempt_id.txt"
+cp "$OPS/sup008_stage1_gate.py" "$OUT/provenance/operational_gate.py.snapshot"
+cp "$OPS/launch_stage1.sh" "$OUT/provenance/stage1_launcher.sh.snapshot"
+mkdir -p "$OUT/provenance/config_snapshots"
+cp configs/g4_sup008_*.yaml "$OUT/provenance/config_snapshots/"
+{
+ date -u
+ echo 'Git commit:'; git rev-parse HEAD
+ echo 'Git worktree:'; git status --porcelain
+ python --version
+ echo 'Package versions:'; python -m pip freeze
+ echo 'GPU:'; nvidia-smi
+ echo 'Disk:'; df -h /workspace
+} > "$OUT/provenance/environment_at_launch.txt" 2>&1
+sha256sum \
+  "$OPS/sup008_stage1_gate.py" "$OPS/launch_stage1.sh" \
+  src/training/train_flower_fedavg.py \
+  src/training/sup008_participation.py \
+  src/experiments/run_sup008_r50_export.py \
+  src/experiments/run_exp01_centralized.py \
+  src/experiments/run_exp02_fedavg.py \
+  src/training/train_centralized.py \
+  src/training/evaluate.py \
+  src/data/preprocess_vindr.py \
+  src/data/split_clients.py \
+  src/data/datasets.py \
+  src/models/cnn.py \
+  requirements.txt \
+  configs/g4_sup008_*.yaml \
+  data/interim/exp01_centralized_vindr_binary_seed42_train_split.csv \
+  data/interim/exp01_centralized_vindr_binary_seed42_val_split.csv \
+  > "$OUT/provenance/sha256_at_launch.txt"
+
+echo "RUNNING ATTEMPT: $ATTEMPT_ID"
+
+central() {
+ local id="$1"
+ echo "[START] CENTRAL $id $(date -u)"
+ python -u -m src.experiments.run_exp01_centralized --config "configs/${id}.yaml" 2>&1 | tee "$OUT/logs/${id}.log"
+ python -u "$OPS/sup008_stage1_gate.py" central --id "$id" 2>&1 | tee "$OUT/logs/${id}_qa.log"
+ echo "[ACCEPTED] CENTRAL $id $(date -u)"
+}
+
+central g4_sup008_centralized_seed2026
+central g4_sup008_centralized_seed31415
+
+id=g4_sup008_iid_seed2026
+echo "[START] IID $id $(date -u)"
+python -u -m src.experiments.run_exp02_fedavg --config "configs/${id}.yaml" 2>&1 | tee "$OUT/logs/${id}.log"
+python -u -m src.experiments.run_sup008_r50_export --config "configs/${id}.yaml" --device cuda 2>&1 | tee "$OUT/logs/${id}_export.log"
+python -u "$OPS/sup008_stage1_gate.py" iid-hold --id "$id" 2>&1 | tee "$OUT/logs/${id}_hold_audit.log"
+
+# The mandatory hold is ALWAYS in effect, even after automatic QA succeeds.
+sha256sum \
+ "$OUT/checkpoints/$id/sup008_fit_participation.jsonl" \
+ "$OUT/checkpoints/$id/flower_fedavg_round_50.pt" \
+ "$OUT/metrics/${id}_flower_fedavg_metrics.csv" \
+ "$OUT/sup008_evidence/$id/${id}_R50_predictions.csv" \
+ "$OUT/sup008_evidence/$id/${id}_R50_metrics.json" \
+ > "$OUT/provenance/first_iid_hold_sha256.txt"
+echo '==============================================================='
+echo 'STAGE 1 DONE. MANDATORY HOLD: DO NOT START THE OTHER THREE RUNS.'
+echo 'Send logs and first-IID hold evidence to G4 for review.'
+echo "ATTEMPT: $ATTEMPT_ID"
+echo '==============================================================='

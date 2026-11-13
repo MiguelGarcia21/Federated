@@ -1,0 +1,330 @@
+#!/usr/bin/env python3
+"""G4 SUP-008 Stage-1 gates. Independent operational QA; no training itself.
+
+Operational script, not part of protected thesis repository. Invoked by the
+operator after source/config validation. Checks archived canonical splits,
+installed code/config contract and completed artifacts. No model training.
+"""
+import argparse
+import csv
+import hashlib
+import json
+import math
+import os
+from pathlib import Path
+import re
+import shutil
+import subprocess
+import sys
+
+REPO = Path('/workspace/thesis-fl-xai')
+OUT = REPO / 'outputs/sup008'
+EXPECTED_REV = '20969563229de10f4d65f1172c3389e0b86b169c'
+TRAIN_HASH = '5107ccd6639059d4fc66bf190f27fea727ecfa96f82e8b0033f9732accb4eed6'
+VAL_HASH = '60bbb6632f791d81eb46fbb3f9eef272f29005d431ec00282773a95c4de0a756'
+SEEDS = (2026, 31415)
+CONFIG_IDS = (
+    'g4_sup008_centralized_seed2026',
+    'g4_sup008_centralized_seed31415',
+    'g4_sup008_iid_seed2026',
+    'g4_sup008_iid_seed31415',
+    'g4_sup008_noniid_label_skew_seed2026',
+    'g4_sup008_noniid_label_skew_seed31415',
+)
+EXPECTED_SOURCE = (
+    'src/training/train_flower_fedavg.py',
+    'src/training/sup008_participation.py',
+    'src/experiments/run_sup008_r50_export.py',
+    'src/experiments/run_exp01_centralized.py',
+    'src/experiments/run_exp02_fedavg.py',
+    'src/training/train_centralized.py',
+    'src/training/evaluate.py',
+    'src/data/preprocess_vindr.py',
+    'src/data/split_clients.py',
+    'src/data/datasets.py',
+    'src/models/cnn.py',
+    'requirements.txt',
+)
+
+
+def require(ok, message):
+    if not ok:
+        raise RuntimeError('STOP: ' + str(message))
+
+
+def digest(path):
+    h = hashlib.sha256()
+    with Path(path).open('rb') as f:
+        for buf in iter(lambda: f.read(1024 * 1024), b''):
+            h.update(buf)
+    return h.hexdigest()
+
+
+def rows(path):
+    with Path(path).open('r', newline='', encoding='utf-8-sig') as f:
+        return list(csv.DictReader(f))
+
+
+def canonical():
+    root = REPO / 'data/interim'
+    train = rows(root / 'exp01_centralized_vindr_binary_seed42_train_split.csv')
+    val = rows(root / 'exp01_centralized_vindr_binary_seed42_val_split.csv')
+    require(len(train) == 12000 and len(val) == 3000, 'unexpected canonical split sizes')
+    def pair_map(records):
+        mapping = {str(r['image_id']): int(r['binary_label']) for r in records}
+        require(len(mapping) == len(records), 'duplicate canonical IDs')
+        require(set(mapping.values()) <= {0, 1}, 'nonbinary canonical label')
+        h = hashlib.sha256()
+        for image_id, label in sorted(mapping.items()):
+            h.update(f'{image_id}\t{label}\n'.encode('utf-8'))
+        return mapping, h.hexdigest()
+    tr, ht = pair_map(train)
+    va, hv = pair_map(val)
+    require(ht == TRAIN_HASH and hv == VAL_HASH, 'canonical image/label fingerprint mismatch')
+    require(not (set(tr) & set(va)), 'train/validation IDs overlap')
+    return train, val, tr, va
+
+
+def git_output(*args):
+    return subprocess.check_output(['git', *args], cwd=REPO, text=True).strip()
+
+
+def preflight():
+    import yaml
+    import torch
+    from src.experiments.run_exp01_centralized import validate_config as validate_c
+    from src.experiments.run_exp02_fedavg import validate_config as validate_fl
+
+    require(git_output('rev-parse', 'HEAD') == EXPECTED_REV, 'Git commit differs from authorized revision')
+    require(not git_output('status', '--porcelain'), 'repository worktree is not clean')
+    require(not OUT.exists(), 'outputs/sup008 already exists: collision/retry requires review')
+    require(torch.cuda.is_available(), 'PyTorch cannot access CUDA')
+    require('A5000' in torch.cuda.get_device_name(0), 'unexpected GPU model')
+    free = shutil.disk_usage('/workspace').free
+    require(free >= 30 * 1024**3, f'insufficient free disk ({free/1024**3:.1f} GiB)')
+    print('Python:', sys.version.split()[0], '| torch:', torch.__version__, '| GPU:', torch.cuda.get_device_name(0), '| disk free GiB:', round(free/1024**3, 1))
+
+    # Strictly reject other active GPU compute processes.
+    probe = subprocess.run(['nvidia-smi','--query-compute-apps=pid','--format=csv,noheader'], text=True, capture_output=True)
+    require(probe.returncode == 0, 'GPU compute-process query failed: ' + probe.stderr)
+    active = [line.strip() for line in probe.stdout.splitlines() if re.fullmatch(r'\d+', line.strip())]
+    require(not active, f'GPU already has compute workloads: {active}')
+
+    for relative in EXPECTED_SOURCE:
+        require((REPO / relative).is_file(), f'missing repository source: {relative}')
+    train, val, tr, va = canonical()
+    cache = REPO / 'data/processed/vindr_binary_224_png'
+    require(cache.is_dir(), 'PNG cache not found')
+    missing_pngs = [im for im in (list(tr) + list(va)) if not (cache / f'{im}.png').is_file()]
+    require(not missing_pngs, f'{len(missing_pngs)} required PNGs missing; examples {missing_pngs[:3]}')
+    missing_dicoms = [r['image_id'] for r in train + val if not Path(r['dicom_path']).is_file()]
+    require(not missing_dicoms, f'{len(missing_dicoms)} DICOMs missing; examples {missing_dicoms[:3]}')
+    print('PASS canonical data: 12000/3000 unique, zero overlap, all PNGs/DICOM paths accessible')
+
+    for exp in CONFIG_IDS:
+        path = REPO / 'configs' / (exp + '.yaml')
+        require(path.is_file(), f'missing configuration {path}')
+        cfg = yaml.safe_load(path.read_text(encoding='utf-8'))
+        require(cfg['experiment_id'] == exp, f'wrong experiment_id: {exp}')
+        seed = 2026 if exp.endswith('2026') else 31415
+        require(int(cfg['seed']) == seed, f'wrong seed: {exp}')
+        require(cfg['project_root'] == str(REPO), f'wrong project root: {exp}')
+        require(cfg['output_dir'] == str(OUT), f'wrong output root: {exp}')
+        require(cfg.get('reuse_split_files') is True, f'canonical split reuse disabled: {exp}')
+        require(cfg.get('canonical_train_split_path') == str(REPO / 'data/interim/exp01_centralized_vindr_binary_seed42_train_split.csv'), f'train split incorrect: {exp}')
+        require(cfg.get('canonical_val_split_path') == str(REPO / 'data/interim/exp01_centralized_vindr_binary_seed42_val_split.csv'), f'val split incorrect: {exp}')
+        require(not any(k.startswith(('sup003_', 'sup007_')) for k in cfg), f'forbidden supplementary keys: {exp}')
+        require(cfg.get('model_name') == 'resnet18' and cfg.get('pretrained') is False and int(cfg['num_classes']) == 2, f'model mismatch: {exp}')
+        if 'centralized' in exp:
+            validate_c(cfg)
+            require(cfg['run_type'] == 'centralized' and int(cfg['epochs']) == 10 and int(cfg['batch_size']) == 32 and cfg['checkpoint_metric'] == 'f1', f'central protocol mismatch: {exp}')
+        else:
+            validate_fl(cfg)
+            require(cfg['run_type'] == 'flower_fedavg' and cfg['sup008_audit'] is True, f'FL protocol mismatch: {exp}')
+            require(int(cfg['fl_num_clients']) == 5 and int(cfg['fl_num_rounds']) == 50 and int(cfg['fl_local_epochs']) == 1 and int(cfg['batch_size']) == 16 and int(cfg['save_checkpoints_every']) == 5 and cfg['save_initial_checkpoint'] is True, f'FL schedule mismatch: {exp}')
+            expected_split = 'iid' if '_iid_' in exp and '_noniid_' not in exp else 'non_iid_label_skew'
+            require(cfg['split_type'] == expected_split, f'wrong partition type: {exp}')
+            require(cfg['class_weight_scope'] == ('local' if expected_split == 'iid' else 'global'), f'wrong class weighting: {exp}')
+            require(cfg['image_source'] == 'cache', f'FL image source mismatch: {exp}')
+            require(float(cfg['non_iid_skew_strength']) == 4.0 if expected_split != 'iid' else True, f'wrong skew setting: {exp}')
+        require(float(cfg['learning_rate']) == 0.0001 and float(cfg['weight_decay']) == 0.01, f'optimizer protocol mismatch: {exp}')
+        print('PASS config:', exp, digest(path))
+    print('PREFLIGHT PASS: Stage 1 may be launched under conditional Master authorization')
+
+
+def read_predictions(path, val):
+    import numpy as np
+    import pandas as pd
+    from sklearn.metrics import f1_score, accuracy_score, balanced_accuracy_score, roc_auc_score, confusion_matrix
+    df = pd.read_csv(path)
+    require(len(df) == 3000 and df['image_id'].astype(str).nunique() == 3000, 'expected 3000 unique predictions')
+    mapping = {str(r.image_id): int(r.true_label) for r in df.itertuples()}
+    require(mapping == val, 'prediction IDs/labels do not match canonical validation')
+    labels = df['true_label'].to_numpy(dtype=int)
+    preds = df['predicted_label'].to_numpy(dtype=int)
+    probs = df['positive_probability'].to_numpy(dtype=float)
+    conf = df['prediction_confidence'].to_numpy(dtype=float)
+    require(set(preds).issubset({0, 1}), 'nonbinary predictions')
+    require(np.isfinite(probs).all() and np.isfinite(conf).all(), 'non-finite probabilities')
+    require(((probs >= 0) & (probs <= 1)).all(), 'probabilities out of range')
+    require(((conf >= .5) & (conf <= 1)).all(), 'confidence out of range')
+    calc = {
+        'f1': float(f1_score(labels, preds, zero_division=0)),
+        'accuracy': float(accuracy_score(labels, preds)),
+        'balanced_accuracy': float(balanced_accuracy_score(labels, preds)),
+        'auc': float(roc_auc_score(labels, probs)),
+    }
+    tn, fp, fn, tp = [int(x) for x in confusion_matrix(labels, preds, labels=[0, 1]).ravel()]
+    calc.update(tp=tp, tn=tn, fp=fp, fn=fn)
+    return df, calc
+
+
+def central(exp):
+    import pandas as pd
+    import torch
+    import yaml
+    _, _, _, val = canonical()
+    cfg = yaml.safe_load((REPO / 'configs' / (exp + '.yaml')).read_text())
+    ck = OUT / 'checkpoints' / exp / 'centralized_resnet18_best.pt'
+    metrics = OUT / 'metrics' / f'{exp}_centralized_metrics.csv'
+    preds = OUT / 'metrics' / f'{exp}_centralized_best_predictions.csv'
+    snap = OUT / 'checkpoints' / exp / 'config.yaml'
+    for path in [ck, metrics, preds, snap]:
+        require(path.is_file() and path.stat().st_size > 0, f'missing/empty centralized artifact: {path}')
+    require(yaml.safe_load(snap.read_text()) == cfg, 'checkpoint folder config snapshot differs from frozen YAML')
+    checkpoint = torch.load(ck, map_location='cpu', weights_only=True)
+    require(checkpoint.get('config') == cfg, 'central checkpoint embedded config mismatch')
+    require(checkpoint.get('checkpoint_metric') == 'f1', 'central checkpoint selected using wrong metric')
+    table = pd.read_csv(metrics)
+    epochs = pd.to_numeric(table['epoch']).astype(int).tolist()
+    require(epochs == list(range(1, 11)), f'central epoch history incomplete {epochs}')
+    require(table['experiment_id'].astype(str).eq(exp).all(), 'central metrics experiment mismatch')
+    require(pd.to_numeric(table['seed']).astype(int).eq(cfg['seed']).all(), 'central metrics seed mismatch')
+    selected_epoch = int(checkpoint['epoch'])
+    selected_row = table.loc[table['epoch'].astype(int) == selected_epoch]
+    require(len(selected_row) == 1 and 1 <= selected_epoch <= 10, 'selected epoch invalid')
+    max_f1 = float(table['val_f1'].max())
+    require(abs(float(selected_row.iloc[0]['val_f1']) - max_f1) <= 1e-9, 'selected checkpoint is not best F1')
+    prediction_df, calc = read_predictions(preds, val)
+    require(prediction_df['epoch'].astype(int).eq(selected_epoch).all(), 'predictions from wrong epoch')
+    require(prediction_df['experiment_id'].astype(str).eq(exp).all(), 'prediction experiment mismatch')
+    require(prediction_df['seed'].astype(int).eq(cfg['seed']).all(), 'prediction seed mismatch')
+    metric_map = {'f1':'val_f1', 'accuracy':'val_accuracy', 'balanced_accuracy':'val_balanced_accuracy', 'auc':'val_auc'}
+    for key, col in metric_map.items():
+        require(abs(calc[key] - float(selected_row.iloc[0][col])) <= 1e-5, f'central metrics mismatch: {key}')
+    print('CENTRAL PASS:', exp, 'best epoch:', selected_epoch, 'best F1:', round(calc['f1'], 6), 'predictions:', len(prediction_df))
+    print('CENTRAL SHA256:', digest(ck), digest(metrics), digest(preds))
+
+
+def fl_hold(exp):
+    import pandas as pd
+    import torch
+    import yaml
+    _, _, train, val = canonical()
+    cfg = yaml.safe_load((REPO / 'configs' / (exp + '.yaml')).read_text())
+    ckdir = OUT / 'checkpoints' / exp
+    snap = ckdir / 'config.yaml'
+    log = ckdir / 'sup008_fit_participation.jsonl'
+    met = OUT / 'metrics' / f'{exp}_flower_fedavg_metrics.csv'
+    evdir = OUT / 'sup008_evidence' / exp
+    reportpath = evdir / f'{exp}_R50_metrics.json'
+    predictpath = evdir / f'{exp}_R50_predictions.csv'
+    for p in (snap, log, met, reportpath, predictpath):
+        require(p.is_file() and p.stat().st_size > 0, f'missing or empty FL artifact: {p}')
+    require(yaml.safe_load(snap.read_text()) == cfg, 'FL config snapshot differs from frozen YAML')
+    metric_table = pd.read_csv(met)
+    rounds = pd.to_numeric(metric_table['round']).astype(int).tolist()
+    require(len(rounds) == len(set(rounds)) and set(range(1, 51)).issubset(rounds), 'FL metrics missing rounds or duplicates')
+    r50 = metric_table.loc[metric_table['round'].astype(int) == 50]
+    require(len(r50) == 1, 'FL Round 50 metrics missing')
+    require(int(r50.iloc[0]['seed']) == cfg['seed'] and str(r50.iloc[0]['experiment_id']) == exp, 'FL metrics identity mismatch')
+    require(int(r50.iloc[0]['num_validation_samples']) == 3000, 'FL validation count mismatch')
+    require(int(r50.iloc[0]['num_clients']) == 5, 'FL client count mismatch')
+
+    expected_sizes = {i: 2400 for i in range(5)} if cfg['split_type'] == 'iid' else dict(enumerate([2996,2698,2400,2102,1804]))
+    partitions = REPO / 'data/interim/client_splits' / exp
+    group = {}
+    for i in range(5):
+        name = f'client_{i}_iid.csv' if cfg['split_type'] == 'iid' else f'client_{i}_non_iid_label_skew.csv'
+        path = partitions / name
+        require(path.is_file(), f'client partition file missing: {path}')
+        members = rows(path)
+        require(len(members) == expected_sizes[i], f'partition {i} has unexpected size')
+        for r in members:
+            im = str(r['image_id'])
+            require(im not in group, f'image appears in multiple client partitions: {im}')
+            group[im] = int(r['binary_label'])
+    require(group == train, 'partition membership/labels do not equal canonical training set')
+
+    records = [json.loads(line) for line in log.read_text().splitlines() if line.strip()]
+    require(len(records) == 50, 'expected exactly 50 participation records')
+    require([int(r['round']) for r in records] == list(range(1,51)), 'participation rounds not strictly sequential 1-50')
+    expected_ids = list(range(5))
+    for rec in records:
+        round_no = rec['round']
+        require(rec['planned_logical_client_ids'] == expected_ids and rec['actual_logical_client_ids'] == expected_ids, f'incomplete logical client roster in round {round_no}')
+        require(len(rec['actual_cids']) == len(set(rec['actual_cids'])) == 5, f'duplicate proxy in round {round_no}')
+        require(set(rec['planned_cids']) == set(rec['actual_cids']), f'different selected/actual proxies in round {round_no}')
+        require(rec['num_failures'] == 0 and rec['sample_total'] == 12000, f'failure/sample-total mismatch in round {round_no}')
+        sizes = {int(k): int(v) for k,v in rec['samples_by_logical_client'].items()}
+        require(sizes == expected_sizes, f'wrong client sample counts at round {round_no}')
+        weights = {int(k): float(v) for k,v in rec['aggregation_weight_by_logical_client'].items()}
+        require(set(weights) == set(expected_sizes), f'missing aggregation weight at round {round_no}')
+        for k in expected_sizes:
+            require(abs(weights[k] - expected_sizes[k]/12000) < 1e-12, f'wrong aggregation weight at round {round_no} client {k}')
+
+    ck_rounds = [0] + list(range(5, 51, 5))
+    for rnd in ck_rounds:
+        path = ckdir / f'flower_fedavg_round_{rnd}.pt'
+        require(path.is_file() and path.stat().st_size > 0, f'missing checkpoint at round {rnd}')
+        checkpoint = torch.load(path, map_location='cpu', weights_only=True)
+        require(int(checkpoint.get('round', -1)) == rnd, f'checkpoint round metadata mismatch {rnd}')
+        require(checkpoint.get('config') == cfg, f'checkpoint config mismatch {rnd}')
+        require(isinstance(checkpoint.get('model_state_dict'), dict) and len(checkpoint['model_state_dict']) > 0, f'missing model state {rnd}')
+        del checkpoint
+
+    report = json.loads(reportpath.read_text())
+    require(report.get('qa_status') == 'PASS' and report.get('experiment_id') == exp and int(report.get('seed')) == cfg['seed'] and report.get('round') == 50, 'export report identity/status mismatch')
+    require(report.get('n_predictions') == 3000, 'export report prediction count mismatch')
+    require(report['checkpoint_sha256'] == digest(ckdir / 'flower_fedavg_round_50.pt'), 'checkpoint SHA mismatch in export report')
+    require(report['logged_metrics_sha256'] == digest(met) and report['predictions_sha256'] == digest(predictpath), 'export SHA mismatch')
+    require(float(report['absolute_loss_difference']) <= 1e-4, 'export loss difference too large')
+    require(all(math.isfinite(float(x)) and float(x) <= 1e-5 for x in report['absolute_metric_differences'].values()), 'export metric differences exceed tolerance')
+    pred_df, calc = read_predictions(predictpath, val)
+    for key in ('f1', 'accuracy', 'balanced_accuracy', 'auc'):
+        logged = float(r50.iloc[0][key])
+        require(abs(calc[key] - logged) <= 1e-5, f'independent {key} difference too large')
+    # Original Flower CSV records rates, not raw confusion counts. Verify the
+    # four integer confusion counts against the independently exported metrics
+    # and check they account for all 3000 canonical validation images.
+    for key in ('tp', 'tn', 'fp', 'fn'):
+        require(calc[key] == int(report['recomputed_metrics'][key]), f'confusion-matrix mismatch: {key}')
+    require(sum(calc[k] for k in ('tp', 'tn', 'fp', 'fn')) == 3000, 'confusion-matrix total mismatch')
+    print('IID HOLD AUDIT PASS:', exp, '50 rounds; 50 audited five-client fits; 11 valid checkpoints; 3000 canonical predictions')
+    print('Round-50 recomputed: ', calc)
+    print('FL SHA256:', digest(log), digest(met), digest(predictpath), digest(ckdir / 'flower_fedavg_round_50.pt'))
+
+
+def main():
+    parser = argparse.ArgumentParser()
+    parser.add_argument('mode', choices=['preflight', 'central', 'iid-hold'])
+    parser.add_argument('--id', default='')
+    args = parser.parse_args()
+    os.chdir(REPO)
+    sys.path.insert(0, str(REPO))
+    try:
+        if args.mode == 'preflight':
+            preflight()
+        elif args.mode == 'central':
+            require(args.id in CONFIG_IDS[:2], 'central run ID not accepted')
+            central(args.id)
+        elif args.mode == 'iid-hold':
+            require(args.id == 'g4_sup008_iid_seed2026', 'only first IID run authorized at hold')
+            fl_hold(args.id)
+    except Exception as exc:
+        print(f'G4 SUP008 {args.mode} FAIL: {exc}', file=sys.stderr)
+        raise
+
+
+if __name__ == '__main__':
+    main()

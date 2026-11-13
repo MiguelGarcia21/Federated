@@ -1,0 +1,74 @@
+{
+  "decision_status": "AWAITING_MASTER_EXCEPTION_DECISION",
+  "original_exporter_status": "FAIL_AP_TOLERANCE",
+  "master_required_core_checks": "PASS",
+  "not_an_exporter_replacement": true,
+  "experiment_id": "g4_sup008_iid_seed2026",
+  "seed": 2026,
+  "round": 50,
+  "n_predictions": 3000,
+  "git_revision": "20969563229de10f4d65f1172c3389e0b86b169c",
+  "device": "cuda",
+  "validation_fingerprint_sha256": "60bbb6632f791d81eb46fbb3f9eef272f29005d431ec00282773a95c4de0a756",
+  "training_fingerprint_sha256": "5107ccd6639059d4fc66bf190f27fea727ecfa96f82e8b0033f9732accb4eed6",
+  "independently_computed_metrics_and_confusion": {
+    "accuracy": 0.9203333333333333,
+    "f1": 0.8659562535053281,
+    "balanced_accuracy": 0.9080179836608722,
+    "auc": 0.9665694750850025,
+    "average_precision": 0.9369886612626025,
+    "brier_score": 0.0639707282544339,
+    "tp": 772,
+    "tn": 1989,
+    "fp": 132,
+    "fn": 107
+  },
+  "round50_logged_metrics": {
+    "f1": 0.8659562535053281,
+    "accuracy": 0.9203333333333332,
+    "balanced_accuracy": 0.9080179836608722,
+    "auc": 0.966570279651076,
+    "average_precision": 0.9370033346342976,
+    "brier_score": 0.063972034361616,
+    "mean_positive_probability": 0.3031269333382224,
+    "mean_prediction_confidence": 0.9709571348627408
+  },
+  "master_core_absolute_differences": {
+    "f1": 0.0,
+    "accuracy": 1.1102230246251565e-16,
+    "balanced_accuracy": 0.0,
+    "auc": 8.045660735422899e-07
+  },
+  "extra_metric_absolute_differences": {
+    "average_precision": 1.4673371695139714e-05,
+    "brier_score": 1.3061071821030001e-06,
+    "mean_positive_probability": 5.684185720999935e-07,
+    "mean_prediction_confidence": 4.083315531255849e-07
+  },
+  "extra_metric_tolerance_failures": {
+    "average_precision": 1.4673371695139714e-05
+  },
+  "loss_abs_difference": 1.3721122848753264e-05,
+  "preexisting_metric_tolerance": 1e-05,
+  "participation_rounds": 50,
+  "checkpoint_rounds": [
+    0,
+    5,
+    10,
+    15,
+    20,
+    25,
+    30,
+    35,
+    40,
+    45,
+    50
+  ],
+  "checkpoint_sha256": "ec135384825002d67dec9f18f40cadcb103941927aa276d061ac3ed6e250bd27",
+  "metrics_sha256": "2c60319eab4cd0023a497d22e3cae3de8ecfbd1788135f89158949999e4d7d1c",
+  "participation_sha256": "1eec1daa53602bc895611c983f895bc3ae06315f315201bced6f96b5090baf16",
+  "config_sha256": "cb6c6d952b07ef9b824c68b86b9b4ab963fe5be7e25c4d3f4de65b5bbda86954",
+  "predictions_sha256": "deb423357e89683bc9a2db34a6a737f27d8c41ab044ebf747e02a19f0e1a9af5",
+  "auditor_sha256": "ae6476c1c3a623625793a69c799d17a3f24ee343c6f9d19f76ed1d78221ac57e",
+  "note": "Original exporter still failed AP; no tolerance relaxed, no training rerun. Master must resolve exception before Stage 2."
+}

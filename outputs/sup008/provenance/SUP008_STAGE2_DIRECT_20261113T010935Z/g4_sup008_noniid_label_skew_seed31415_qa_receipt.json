@@ -1,0 +1,10 @@
+{
+  "experiment_id": "g4_sup008_noniid_label_skew_seed31415",
+  "seed": 31415,
+  "checkpoint_sha256": "ded52b261d19b792b1a0f8a25b5c5a1cdbeb1f78822544ee77a8c81b52f816fd",
+  "predictions_sha256": "f2ca315858eb21bc611043177c029d3fdff6f521e8b85c75d959f22c6898d914",
+  "rounds": 50,
+  "n_predictions": 3000,
+  "original_exporter_status": "PASS",
+  "qa_status": "PASS"
+}
