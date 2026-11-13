@@ -4,6 +4,7 @@ from torchvision import models
 
 SUPPORTED_MODELS = {
     "resnet18",
+    "densenet121",  # SUP-006 opt-in; original ResNet-18 remains default.
 }
 
 
@@ -44,6 +45,25 @@ def build_resnet18_binary(
     return model
 
 
+def build_densenet121_binary(
+    num_classes: int = 2,
+    pretrained: bool = False,
+) -> nn.Module:
+    """SUP-006: randomly initialized DenseNet-121 with a two-logit head.
+
+    Pretrained DenseNet weights are deliberately unsupported in this
+    comparison, avoiding a hidden pretraining-versus-scratch confound.
+    """
+    if num_classes != 2:
+        raise ValueError("SUP006 DenseNet-121 requires num_classes=2.")
+    if pretrained:
+        raise ValueError("SUP006 DenseNet-121 prohibits pretrained weights.")
+
+    model = models.densenet121(weights=None)
+    model.classifier = nn.Linear(model.classifier.in_features, num_classes)
+    return model
+
+
 def create_model(
     model_name: str = "resnet18",
     num_classes: int = 2,
@@ -64,6 +84,12 @@ def create_model(
 
     if normalized_name == "resnet18":
         return build_resnet18_binary(
+            num_classes=num_classes,
+            pretrained=pretrained,
+        )
+
+    if normalized_name == "densenet121":
+        return build_densenet121_binary(
             num_classes=num_classes,
             pretrained=pretrained,
         )

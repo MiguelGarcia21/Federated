@@ -184,10 +184,50 @@ def validate_config(config: Dict[str, Any]) -> None:
             "task='binary_abnormal'."
         )
 
-    if str(config.get("model_name", "resnet18")).lower() != "resnet18":
-        raise ValueError(
-            "The current federated runner supports only ResNet-18."
-        )
+    requested_model = str(config.get("model_name", "resnet18")).strip().lower()
+    if requested_model == "resnet18":
+        if config.get("sup006_architecture") is not None:
+            raise ValueError("SUP006 opt-in cannot be used with ResNet-18")
+    elif requested_model == "densenet121":
+        seed = int(config["seed"])
+        split_type = str(config["split_type"]).lower()
+        condition = "iid" if split_type == "iid" else "noniid_label_skew"
+        expected_id = f"g5_sup006_densenet121_{condition}_seed{seed}"
+        expected_scope = "local" if split_type == "iid" else "global"
+        if (config.get("sup006_architecture") != "densenet121"
+                or experiment_id != expected_id
+                or seed not in (2026, 31415)
+                or config.get("run_type") != "flower_fedavg"
+                or Path(config["output_dir"]).name != "sup006"
+                or config.get("pretrained") is not False
+                or config.get("sup008_audit") is not True
+                or int(config["image_size"]) != 224
+                or int(config["batch_size"]) != 16
+                or int(config["fl_num_clients"]) != 5
+                or int(config["fl_num_rounds"]) != 50
+                or int(config["fl_local_epochs"]) != 1
+                or int(config["save_checkpoints_every"]) != 5
+                or config.get("fl_algorithm") != "fedavg"
+                or config.get("image_source") != "cache"
+                or config.get("class_weight_scope") != expected_scope
+                or not config.get("reuse_split_files")
+                or any(key not in config for key in (
+                    "canonical_train_split_path", "canonical_val_split_path",
+                    "canonical_xai_ids_path",
+                ))
+                or any(key in config for key in (
+                    "sup003_condition", "sup003_gamma_by_client", "sup007_condition",
+                ))):
+            raise ValueError("SUP006 federated configuration contract violation")
+        checkpoint_dir = Path(config["output_dir"]) / "checkpoints" / experiment_id
+        predicted_metrics = (Path(config["output_dir"]) / "metrics"
+                             / f"{experiment_id}_flower_fedavg_metrics.csv")
+        if checkpoint_dir.exists() or predicted_metrics.exists():
+            raise FileExistsError("SUP006 federated output exists; refusing overwrite")
+        # The existing 'sup008_audit' key is a reusable 5-client FIT-integrity
+        # implementation mechanism, NOT an assertion that this is SUP-008 data.
+    else:
+        raise ValueError("Federated runner permits only ResNet-18 or opt-in SUP006 DenseNet-121")
 
     if int(config["num_classes"]) != 2:
         raise ValueError(

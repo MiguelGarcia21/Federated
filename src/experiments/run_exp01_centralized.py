@@ -116,10 +116,37 @@ def validate_config(config: Dict[str, Any]) -> None:
             "task='binary_abnormal'."
         )
 
-    if str(config.get("model_name", "resnet18")).lower() != "resnet18":
-        raise ValueError(
-            "Experiment 1 currently supports only model_name='resnet18'."
-        )
+    requested_model = str(config.get("model_name", "resnet18")).strip().lower()
+    if requested_model == "resnet18":
+        if config.get("sup006_architecture") is not None:
+            raise ValueError("SUP006 opt-in cannot be used with ResNet-18")
+    elif requested_model == "densenet121":
+        seed = int(config["seed"])
+        expected_id = f"g5_sup006_densenet121_centralized_seed{seed}"
+        if (config.get("sup006_architecture") != "densenet121"
+                or experiment_id != expected_id
+                or seed not in (2026, 31415)
+                or config.get("run_type") != "centralized"
+                or Path(config["output_dir"]).name != "sup006"
+                or config.get("pretrained") is not False
+                or int(config["image_size"]) != 224
+                or int(config["batch_size"]) != 32
+                or int(config["epochs"]) != 10
+                or not config.get("reuse_split_files")
+                or not config.get("save_predictions")
+                or str(config.get("checkpoint_metric")) != "f1"
+                or any(key not in config for key in (
+                    "canonical_train_split_path", "canonical_val_split_path",
+                    "canonical_xai_ids_path",
+                ))):
+            raise ValueError("SUP006 centralized configuration contract violation")
+        checkpoint_dir = Path(config["output_dir"]) / "checkpoints" / experiment_id
+        metrics_root = Path(config["output_dir"]) / "metrics"
+        predicted_metrics = metrics_root / f"{experiment_id}_centralized_metrics.csv"
+        if checkpoint_dir.exists() or predicted_metrics.exists():
+            raise FileExistsError("SUP006 centralized output exists; refusing overwrite")
+    else:
+        raise ValueError("Experiment 1 permits only ResNet-18 or opt-in SUP006 DenseNet-121")
 
     if int(config["num_classes"]) != 2:
         raise ValueError(
