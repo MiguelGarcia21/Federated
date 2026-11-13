@@ -1,0 +1,119 @@
+Thu Nov 12 00:49:19 UTC 2026
+Git commit:
+20969563229de10f4d65f1172c3389e0b86b169c
+Git worktree:
+?? outputs/sup008/
+Python 3.10.22
+Package versions:
+alembic==1.20.1
+attrs==26.1.0
+certifi==2026.10.23
+cffi==2.1.1
+charset-normalizer==3.5.2
+click==8.5.1
+cloudpickle==3.1.2
+contourpy==1.3.2
+cryptography==46.0.7
+cuda-bindings==13.4.4
+cuda-pathfinder==1.8.3
+cuda-toolkit==13.0.3.0
+cycler==0.12.1
+filelock==4.1.0
+flwr==1.30.0
+fonttools==4.65.0
+fsspec==2026.9.0
+greenlet==3.5.6
+grpcio==1.85.1
+grpcio-health-checking==1.81.2
+idna==3.20
+iterators==0.0.2
+Jinja2==3.1.6
+joblib==1.6.0
+jsonschema==4.26.0
+jsonschema-specifications==2025.9.1
+kiwisolver==1.5.1
+Mako==1.4.3
+markdown-it-py==4.3.0
+MarkupSafe==3.0.4
+matplotlib==3.10.9
+mdurl==0.1.2
+mpmath==1.3.0
+msgpack==1.2.4
+networkx==3.4.2
+numpy==2.2.6
+nvidia-cublas==13.1.1.3
+nvidia-cuda-cupti==13.0.85
+nvidia-cuda-nvrtc==13.0.88
+nvidia-cuda-runtime==13.0.96
+nvidia-cudnn-cu13==9.24.0.43
+nvidia-cufft==12.0.0.61
+nvidia-cufile==1.15.1.6
+nvidia-curand==10.4.0.35
+nvidia-cusolver==12.0.4.66
+nvidia-cusparse==12.6.3.3
+nvidia-cusparselt-cu13==0.8.1
+nvidia-nccl-cu13==2.30.7
+nvidia-nvjitlink==13.5.37
+nvidia-nvshmem-cu13==3.4.5
+nvidia-nvtx==13.0.85
+opencv-python==5.0.0.93
+packaging==25.0
+pandas==2.3.3
+pathspec==0.12.1
+pillow==12.3.0
+protobuf==6.33.6
+pycparser==3.11
+pycryptodome==3.24.1
+pydicom==3.0.2
+Pygments==2.21.0
+pyparsing==3.3.3
+python-dateutil==3.0.0
+pytz==2026.6
+PyYAML==6.0.3
+ray==2.51.1
+referencing==0.37.0
+requests==2.34.2
+rich==13.9.4
+rpds-py==0.30.0
+scikit-learn==1.7.2
+scipy==1.15.3
+shellingham==1.5.4
+six==1.17.0
+SQLAlchemy==2.0.57
+sympy==1.14.0
+threadpoolctl==3.8.0
+tomli==2.5.0
+tomli_w==1.2.0
+torch==2.14.1
+torchvision==0.29.2
+tqdm==4.70.1
+triton==3.8.0
+typer==0.20.1
+typing_extensions==4.16.0
+tzdata==2026.6
+urllib3==2.8.0
+uv==0.11.33
+GPU:
+Thu Nov 12 00:49:19 2026       
++-----------------------------------------------------------------------------------------+
+| NVIDIA-SMI 595.91.07              Driver Version: 595.91.07      CUDA Version: 13.2     |
++-----------------------------------------+------------------------+----------------------+
+| GPU  Name                 Persistence-M | Bus-Id          Disp.A | Volatile Uncorr. ECC |
+| Fan  Temp   Perf          Pwr:Usage/Cap |           Memory-Usage | GPU-Util  Compute M. |
+|                                         |                        |               MIG M. |
+|=========================================+========================+======================|
+|   0  NVIDIA RTX A5000               On  |   00000000:D1:00.0 Off |                  Off |
+| 30%   33C    P8             31W /  230W |       1MiB /  24564MiB |      0%      Default |
+|                                         |                        |                  N/A |
++-----------------------------------------+------------------------+----------------------+
+
++-----------------------------------------------------------------------------------------+
+| Processes:                                                                              |
+|  GPU   GI   CI              PID   Type   Process name                        GPU Memory |
+|        ID   ID                                                               Usage      |
+|=========================================================================================|
+|  No running processes found                                                             |
++-----------------------------------------------------------------------------------------+
+Disk:
+Filesystem      Size  Used Avail Use% Mounted on
+overlay         450G  352G   99G  79% /
