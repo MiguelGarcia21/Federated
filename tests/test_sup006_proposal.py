@@ -59,11 +59,12 @@ assert resnet.fc.out_features == 2
 assert module.count_trainable_parameters(resnet) == 11177538
 
 configs = sorted((ROOT / 'configs').glob('g5_sup006_densenet121_*.yaml'))
-assert len(configs) == 6, len(configs)
+assert len(configs) == 15, len(configs)
+assert len({p.stem for p in configs}) == 15
 for p in configs:
     c = yaml.safe_load(p.read_text(encoding='utf-8'))
     seed = int(c['seed'])
-    assert seed in (2026, 31415)
+    assert seed in (42, 7, 123, 2026, 31415)
     assert c['experiment_id'] == p.stem
     assert c['model_name'] == 'densenet121'
     assert c['sup006_architecture'] == 'densenet121'
@@ -71,6 +72,12 @@ for p in configs:
     assert c['image_size'] == 224
     assert c['reuse_split_files'] is True
     assert Path(c['output_dir']).name == 'sup006'
+    condition = 'centralized' if c['run_type'] == 'centralized' else (
+        'iid' if c['split_type'] == 'iid' else 'noniid_label_skew'
+    )
+    assert c['experiment_id'] == f'g5_sup006_densenet121_{condition}_seed{seed}'
+    if condition != 'centralized':
+        assert c['class_weight_scope'] == ('global' if condition == 'noniid_label_skew' or seed == 42 else 'local')
     if c['run_type'] == 'centralized':
         assert c['batch_size'] == 32 and c['epochs'] == 10
         assert c['checkpoint_metric'] == 'f1'
@@ -81,5 +88,5 @@ for p in configs:
         assert c['fl_local_epochs'] == 1 and c['batch_size'] == 16
         assert c['sup008_audit'] is True  # legacy mechanism reused, NOT SUP008 results
 print('PASS: syntax, random-init DenseNet 2 logits/727 arrays, finite forward,')
-print('      strict state reconstruction, ResNet-18 default, 6 YAML contracts')
+print('      strict state reconstruction, ResNet-18 default, 15 YAML contracts')
 print('PENDING: Flower integration, actual RunPod versions, CUDA/pilot, real splits')

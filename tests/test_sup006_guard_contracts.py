@@ -50,7 +50,9 @@ with TemporaryDirectory() as tmpdir:
     csv = tmp / 'train.csv'; csv.write_text('dummy', encoding='utf-8')
     images = tmp / 'images'; images.mkdir()
     cache = tmp / 'cache'; cache.mkdir()
-    for path in sorted((ROOT / 'configs').glob('g5_sup006_densenet121_*.yaml')):
+    paths = sorted((ROOT / 'configs').glob('g5_sup006_densenet121_*.yaml'))
+    assert len(paths) == 15, len(paths)
+    for path in paths:
         c = yaml.safe_load(path.read_text(encoding='utf-8'))
         c['train_csv'] = str(csv)
         c['train_image_dir'] = str(images)
@@ -61,6 +63,11 @@ with TemporaryDirectory() as tmpdir:
         else:
             fn = central
         fn(c)
+        if c['run_type'] == 'flower_fedavg':
+            expected_scope = 'global' if (c['split_type'] == 'non_iid_label_skew' or c['seed'] == 42) else 'local'
+            assert c['class_weight_scope'] == expected_scope
+            wrong_scope = dict(c, class_weight_scope='local' if expected_scope == 'global' else 'global')
+            must_fail(fn, wrong_scope, ValueError)
         wrong = dict(c, pretrained=True)
         must_fail(fn, wrong, ValueError)
         wrong = dict(c, sup006_architecture='wrong')
@@ -86,5 +93,5 @@ with TemporaryDirectory() as tmpdir:
         legacy['output_dir'] = str(tmp / 'sup008')
         fn(legacy)
 
-print('PASS: six new opt-in configs, bad-ID/bad-model/pretrained guards,')
+print('PASS: fifteen opt-in configs, bad-ID/bad-model/pretrained guards,')
 print('      five-client audit contract, no-overwrite guard, legacy ResNet acceptance')

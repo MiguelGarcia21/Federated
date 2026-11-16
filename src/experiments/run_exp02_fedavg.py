@@ -193,10 +193,16 @@ def validate_config(config: Dict[str, Any]) -> None:
         split_type = str(config["split_type"]).lower()
         condition = "iid" if split_type == "iid" else "noniid_label_skew"
         expected_id = f"g5_sup006_densenet121_{condition}_seed{seed}"
-        expected_scope = "local" if split_type == "iid" else "global"
+        # Seed 42 mirrors its historical IID baseline: global class weighting.
+        # Other IID seeds use local weighting; the numeric weights agree
+        # for the equal-class-proportion IID partitions.
+        expected_scope = (
+            "global" if split_type == "non_iid_label_skew" or (split_type == "iid" and seed == 42)
+            else "local"
+        )
         if (config.get("sup006_architecture") != "densenet121"
                 or experiment_id != expected_id
-                or seed not in (2026, 31415)
+                or seed not in (42, 7, 123, 2026, 31415)
                 or config.get("run_type") != "flower_fedavg"
                 or Path(config["output_dir"]).name != "sup006"
                 or config.get("pretrained") is not False

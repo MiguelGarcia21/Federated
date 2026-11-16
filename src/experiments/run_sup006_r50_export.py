@@ -53,6 +53,12 @@ def main() -> None:
     if not isinstance(config, dict):
         raise ValueError('Expected a YAML mapping')
     exp = str(config['experiment_id'])
+    seed = int(config.get('seed', -1))
+    expected_scope = (
+        'global' if config.get('split_type') == 'non_iid_label_skew'
+        or (config.get('split_type') == 'iid' and seed == 42)
+        else 'local'
+    )
     if (not exp.startswith('g5_sup006_densenet121_')
             or config.get('run_type') != 'flower_fedavg'
             or config.get('split_type') not in ('iid', 'non_iid_label_skew')
@@ -63,12 +69,10 @@ def main() -> None:
             or int(config.get('fl_num_clients', 0)) != 5
             or str(config.get('image_source')) != 'cache'
             or Path(config.get('output_dir', '')).name != 'sup006'
-            or str(config.get('class_weight_scope')) != (
-                'local' if config.get('split_type') == 'iid' else 'global'
-            )
+            or str(config.get('class_weight_scope')) != expected_scope
             or any(k in config for k in ('sup003_condition','sup003_gamma_by_client','sup007_condition'))):
         raise ValueError('Not a scoped SUP006 DenseNet FL configuration')
-    if int(config.get('seed', -1)) not in (2026, 31415):
+    if int(config.get('seed', -1)) not in (42, 7, 123, 2026, 31415):
         raise ValueError('Unexpected SUP006 seed')
     if (str(config.get('model_name')) != 'densenet121'
             or int(config.get('num_classes', 0)) != 2

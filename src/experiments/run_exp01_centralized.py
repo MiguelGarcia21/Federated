@@ -125,7 +125,7 @@ def validate_config(config: Dict[str, Any]) -> None:
         expected_id = f"g5_sup006_densenet121_centralized_seed{seed}"
         if (config.get("sup006_architecture") != "densenet121"
                 or experiment_id != expected_id
-                or seed not in (2026, 31415)
+                or seed not in (42, 7, 123, 2026, 31415)
                 or config.get("run_type") != "centralized"
                 or Path(config["output_dir"]).name != "sup006"
                 or config.get("pretrained") is not False
